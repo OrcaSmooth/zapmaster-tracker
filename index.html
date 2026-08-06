@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zapmaster Session Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/patternomaly@1.3.2/dist/patternomaly.js"></script>
+<style>
+:root{
+  --primary:#2F4F4F;
+  --primary-dk:#223a3a;
+  --primary-lt:#3d6666;
+  --accent:#5f8787;
+  --accent-lt:#a7c4c4;
+  --bg:#f2f5f5;
+  --surface:#ffffff;
+  --border:#d5dede;
+  --text:#1a2424;
+  --muted:#647070;
+  --warn-bg:#fff8e1;
+  --warn-border:#e0b400;
+  --warn-text:#7a5900;
+  --positive:#1f7a4d;
+  --positive-bg:#e7f4ec;
+  --negative:#b23b2e;
+  --negative-bg:#fbeeec;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--text);min-width:768px}
+a{color:var(--primary-lt)}
+/* APP BAR */
+#appbar{background:var(--primary);color:#eaf3f3;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.bar-top{display:flex;align-items:center;justify-content:space-between;padding:9px 18px;gap:12px;flex-wrap:wrap}
+.brand{font-size:16px;font-weight:700;letter-spacing:.3px;display:flex;align-items:baseline;gap:10px}
+.brand .bolt{color:var(--warn-border);font-size:18px}
+.brand .who{font-size:12px;font-weight:500;color:var(--accent-lt)}
+.bar-tools{display:flex;gap:6px;flex-wrap:wrap}
+.tbtn{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);border-radius:5px;color:#eaf3f3;padding:5px 11px;font-size:12px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{background:rgba(255,255,255,.22)}
+.dropdown{position:relative;display:inline-block}
+.dd-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.18);min-width:110px;padding:4px;display:none;z-index:300}
+.dd-menu.open{display:block}
+.dd-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:7px 11px;font-size:13px;font-weight:500;cursor:pointer;border-radius:4px}
+.dd-menu button:hover{background:var(--bg)}
+nav#tabs{display:flex;justify-content:space-between;align-items:stretch;padding:0 12px}
+.tabs-primary,.tabs-secondary{display:flex;gap:2px}
+.tabs-secondary{border-left:1px solid rgba(255,255,255,.15);padding-left:10px;margin-left:8px}
+nav#tabs button{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--accent-lt);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+nav#tabs button:hover{color:#fff}
+nav#tabs button.active{color:#fff;border-bottom-color:var(--warn-border)}
+/* MAIN */
+#main{max-width:1180px;margin:0 auto;padding:18px}
+.view{display:none}
+.view.active{display:block}
+/* PANEL */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.ph{padding:11px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;color:var(--primary-dk);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pb{padding:16px}
+.page-title{font-size:20px;font-weight:700;color:var(--primary-dk);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+/* FORM */
+.frow{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:5px;min-width:130px}
+.fg.wide{min-width:220px;flex:1}
+.fg.full{flex-basis:100%}
+.fg.xs{min-width:80px;max-width:110px}
+label,.flabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+input[type=text],input[type=password],input[type=number],input[type=date],select,textarea{border:1px solid var(--border);border-radius:5px;padding:7px 9px;font-size:13px;background:var(--surface);color:var(--text);width:100%;font-family:inherit}
+.pw-wrap{display:flex;gap:6px;align-items:center}
+.pw-wrap input{flex:1;min-width:0}
+.pw-toggle{flex-shrink:0;padding:6px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.pw-toggle:hover{filter:brightness(1.07)}
+textarea{resize:vertical;min-height:64px}
+textarea.autogrow{overflow:hidden;resize:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.hint{font-size:11px;color:var(--muted)}
+.cbgrid{display:flex;flex-wrap:wrap;gap:6px 16px}
+.cbgrid.tight{gap:5px 12px}
+.cbitem{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text);white-space:nowrap}
+.cbitem input{width:15px;height:15px;accent-color:var(--primary)}
+.mod-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+.mod-row label{flex:1;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);font-size:13px}
+.mod-row input{width:76px}
+.mod-total{margin-top:8px;font-weight:700;color:var(--primary-dk)}
+/* BUTTONS */
+.btn{padding:7px 15px;border-radius:5px;border:none;cursor:pointer;font-size:13px;font-weight:600}
+.btn:hover{filter:brightness(1.07)}
+.btn-p{background:var(--primary);color:#fff}
+.btn-a{background:var(--accent);color:#fff}
+.btn-g{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-d{background:var(--negative);color:#fff}
+.btn-sm{padding:4px 10px;font-size:12px}
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:var(--bg);padding:8px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:#fafcfc}
+.tbl .total-row td{font-weight:700;background:var(--bg);border-top:2px solid var(--border)}
+.tbl-num td:not(:first-child),.tbl-num th:not(:first-child){text-align:right}
+.pill{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700}
+.pill-consult{background:#eef1f4;color:#4a5568}
+.pill-service{background:var(--positive-bg);color:var(--positive)}
+.pill-self{background:#eef3f3;color:var(--primary-lt)}
+.pill-colleague{background:var(--warn-bg);color:var(--warn-text)}
+.tbl th.sortable{cursor:pointer;user-select:none}
+.tbl th.sortable:hover{color:var(--primary-dk)}
+.sort-ind{margin-left:4px;color:var(--accent);font-size:9px}
+.tick{color:var(--positive);font-weight:700}
+.cross{color:var(--muted)}
+.empty{color:var(--muted);font-style:italic;padding:14px 0;text-align:center}
+/* DASHBOARD CARDS */
+.dgrid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.dcard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;flex:1;min-width:150px}
+.dcard-link{cursor:pointer}
+.dcard-link:hover{border-color:var(--primary)}
+.dcard-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px}
+.dcard-val{font-size:22px;font-weight:800;color:var(--primary)}
+.dcard-val.warn{color:var(--warn-text)}
+.dcard-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.dcard-sub.warn{color:var(--warn-text)}
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.chart-box{border:1px solid var(--border);border-radius:8px;padding:12px}
+.chart-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px;text-align:center}
+.prop-toggle{display:inline-flex}
+.prop-toggle button{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:3px 10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+.prop-toggle button:first-child{border-radius:5px 0 0 5px}
+.prop-toggle button:last-child{border-radius:0 5px 5px 0;border-left:none}
+.prop-toggle button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.ot-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--warn-border);background:var(--warn-bg);border-radius:8px;margin-bottom:10px}
+.ot-row:last-child{margin-bottom:0}
+.ot-title{font-weight:700;color:var(--text)}
+.ot-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.ot-clear{color:var(--positive);font-weight:600}
+.num-badge{display:inline-block;min-width:18px;text-align:center;font-size:10px;font-weight:800;color:var(--primary);background:var(--accent-lt);border-radius:4px;padding:1px 5px}
+.mod-line{display:flex;align-items:center;gap:6px;white-space:nowrap;padding:1px 0}
+.soap-flag{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);font-size:11px;font-weight:800;line-height:1}
+.soap-btn{background:none;border:0;padding:2px;cursor:pointer;line-height:1;border-radius:5px}
+.soap-btn:hover{background:var(--accent-lt)}
+.chart-wrap{position:relative;height:260px}
+/* WARN BANNER */
+.warn{background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:10px 13px;font-size:13px;color:var(--warn-text);margin-bottom:14px}
+/* CALENDAR */
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.cal-title{font-size:17px;font-weight:700;color:var(--primary-dk)}
+.cal-nav{display:flex;gap:6px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:center;padding:4px 0}
+.cal-cell{min-height:92px;border:1px solid var(--border);border-radius:7px;padding:6px;position:relative;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:box-shadow .12s}
+.cal-cell:hover{box-shadow:0 0 0 2px var(--accent) inset}
+.cal-cell.out{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
+.cal-daynum-row{display:flex;align-items:center;gap:4px}
+.cal-daynum{font-size:13px;font-weight:700;color:var(--text)}
+.cal-cell.today .cal-daynum{background:var(--primary);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.cal-badges{display:flex;flex-direction:column;gap:2px;margin-top:auto}
+.cbadge{font-size:10px;font-weight:600;color:var(--muted)}
+.cbadge b{color:var(--primary-dk)}
+.cproc{font-size:10px;font-weight:800;color:var(--primary);background:var(--accent-lt);border-radius:4px;padding:1px 5px;align-self:flex-start}
+.cnote{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.csoap{display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+/* day types */
+.dt-weekend{background:#eef1f1}
+.dt-school{background:#fff;border-top:3px solid var(--accent-lt)}
+.dt-completed{background:var(--positive-bg);border-top:3px solid var(--positive)}
+.dt-planned{background:var(--warn-bg);border:1px solid var(--warn-border);border-top:3px solid var(--warn-border)}
+.dt-in{background:#fff;border:1px dashed var(--accent);border-top:3px solid var(--accent)}
+.dt-out{background:repeating-linear-gradient(45deg,#f0f2f2,#f0f2f2 6px,#e6eaea 6px,#e6eaea 12px);color:var(--muted)}
+.dt-partial{background:var(--positive-bg);border-top:3px solid var(--positive)}
+.cwarn{margin-left:4px}
+#legend-tip{position:fixed;z-index:600;pointer-events:none;background:rgba(20,30,30,.92);color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:5px;white-space:nowrap;display:none}
+.cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;font-size:11px;color:var(--muted)}
+.leg{display:flex;align-items:center;gap:6px}
+.leg .sw{width:16px;height:16px;border-radius:4px;border:1px solid var(--border)}
+/* MODAL */
+#modal-root:empty{display:none}
+.overlay{position:fixed;inset:0;background:rgba(20,30,30,.5);display:flex;align-items:flex-start;justify-content:center;padding:26px 14px;overflow-y:auto;z-index:500}
+.modal{background:var(--surface);border-radius:10px;width:100%;max-width:780px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.modal.sm{max-width:460px}
+.modal-head{padding:14px 18px;border-bottom:1px solid var(--border);font-size:16px;font-weight:700;color:var(--primary-dk);display:flex;align-items:center;justify-content:space-between}
+.modal-head .x{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1}
+.modal-body{padding:18px}
+.modal-foot{padding:13px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.section-sep{border:none;border-top:1px solid var(--border);margin:16px 0}
+.field-block{margin-bottom:14px}
+.field-block>.flabel{display:block;margin-bottom:6px}
+/* SESSION VIEW */
+.sv-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sv-item{border:1px solid var(--border);border-radius:7px;padding:11px 13px}
+.sv-item .k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px}
+.sv-item .v{font-size:14px;white-space:pre-wrap}
+.sv-item.full{grid-column:1 / -1}
+.link-btn{background:none;border:none;padding:0;cursor:pointer;color:var(--primary);text-decoration:underline;font-size:inherit;font-family:inherit;font-weight:inherit;text-align:left}
+.link-btn:hover{color:var(--primary-dk)}
+/* DAY VIEW */
+.cal-edit-btn{position:absolute;bottom:5px;right:5px;background:none;border:none;cursor:pointer;font-size:15px;color:var(--text);line-height:1;padding:2px 3px;border-radius:3px;opacity:0;transition:opacity .12s}
+.cal-cell:hover .cal-edit-btn{opacity:1}
+.cal-edit-btn:hover{background:var(--accent-lt);color:var(--primary-dk)}
+.mini-cal{min-width:200px}
+.mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mini-cal-dow{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;padding:2px 0}
+.mini-cal-cell{font-size:11px;font-weight:600;text-align:center;padding:4px 2px;border-radius:4px;cursor:pointer;color:var(--text)}
+.mini-cal-cell:hover{background:var(--accent-lt)}
+.mini-cal-cell.mc-out{cursor:default;pointer-events:none;color:transparent}
+.mini-cal-cell.mc-green{background:var(--positive-bg);color:var(--positive)}
+.mini-cal-cell.mc-yellow{background:#fef9ec;color:#92600a}
+.mini-cal-cell.mc-weekend{color:var(--muted)}
+.mini-cal-cell.mc-selected{outline:2px solid var(--primary);outline-offset:-1px;font-weight:800}
+.dv-top{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px}
+.dv-summary{flex:1;min-width:220px}
+.dv-summary .sv-item{margin-bottom:6px}
+.dv-sess-card{border:1px solid var(--border);border-radius:7px;padding:11px 13px;margin-bottom:8px}
+.dv-sess-card:last-child{margin-bottom:0}
+.dv-sess-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.dv-sess-detail{font-size:12px;color:var(--muted)}
+/* PATIENT IDENTIFIER */
+.pid-cell{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.pid-badge{font-family:monospace;font-size:11px;letter-spacing:.3px;color:var(--muted)}
+.pid-section{border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg)}
+/* PATIENT PICKER */
+.patient-grid{display:flex;flex-wrap:wrap;gap:10px;padding:2px 0}
+.patient-tile{background:var(--surface);border:2px solid var(--border);border-radius:8px;padding:12px 10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:96px;transition:border-color .12s,background .12s}
+.patient-tile:hover{border-color:var(--accent);background:var(--bg)}
+.patient-tile.selected{border-color:var(--primary);background:var(--positive-bg)}
+.patient-tile-id{font-family:monospace;font-size:11px;color:var(--muted);letter-spacing:.3px}
+.patient-tile-count{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+@media print{
+  #appbar,.no-print{display:none!important}
+  #main{max-width:unset}
+  body{min-width:unset}
+  .view{display:none!important}
+  .view.active{display:block!important}
+}
+</style>
+</head>
+<body>
+
+<header id="appbar">
+  <div class="bar-top">
+    <div class="brand"><span class="bolt">⚡</span> Zapmaster Session Tracker <span class="who" id="brand-who"></span></div>
+    <div class="bar-tools">
+      <button class="tbtn" data-act="export-json">Save Data</button>
+      <button class="tbtn" data-act="import-json">Load Data</button>
+    </div>
+  </div>
+  <nav id="tabs">
+    <div class="tabs-primary">
+      <button data-nav="reports">Reports</button>
+      <button data-nav="calendar">Calendar</button>
+      <button data-nav="sessions">Sessions</button>
+      <button data-nav="patients">Patients</button>
+      <button data-nav="assignments">Assignments</button>
+    </div>
+    <div class="tabs-secondary">
+      <button data-nav="settings">Settings</button>
+      <button data-nav="about">About</button>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+  <section id="view-reports" class="view"></section>
+  <section id="view-calendar" class="view"></section>
+  <section id="view-sessions" class="view"></section>
+  <section id="view-session" class="view"></section>
+  <section id="view-patients" class="view"></section>
+  <section id="view-patient" class="view"></section>
+  <section id="view-day" class="view"></section>
+  <section id="view-assignments" class="view"></section>
+  <section id="view-assignment" class="view"></section>
+  <section id="view-settings" class="view"></section>
+  <section id="view-about" class="view"></section>
+</main>
+
+<div id="modal-root"></div>
+<input type="file" id="file-import" accept="application/json,.json" style="display:none">
+<input type="file" id="file-import-csv" accept=".csv,text/csv,.tsv,text/tab-separated-values" style="display:none">
+
+<script>
+/* ============================ CONSTANTS ============================ */
+const K = { settings:'zap_settings', sessions:'zap_sessions', calendar:'zap_calendar', view:'zap_view', assignments:'zap_assignments', meta:'zap_meta' };
+const NAV_VIEWS = ['reports','calendar','sessions','patients','assignments','settings','about']; // matches the tab order
+const DEFAULT_FORM_ID = '1FAIpQLSdAs88YbezDuxVPQptIynrqfVeMlQHNWoC8lcoFHmIXYTBrmg';
+const APP_VERSION = '1.0.0'; // bump by hand on notable releases
+const DATA_SCHEMA_VERSION = 1; // bump when the settings/sessions/calendar/assignments shape changes
+const DASH = '<span class="cross">—</span>'; // shared empty-value placeholder
+
+const APPT_TYPES = ['Consult','Service','Colleague','Self work'];
+// App-level appointment types map to the Google Form's smaller value set on submit
+const APPT_FORM_MAP = { 'Colleague':'Service' };
+function apptFormValue(t){ return APPT_FORM_MAP[t]||t; }
+const MODALITIES = ['Galvanic - SN','Galvanic - MN','Thermolysis - Flash','Thermolysis - Manual','Blend','Insertion practice no energy'];
+// App-level modality labels map to the Google Form's actual option text on submit
+// (the form has no space before SN/MN: "Galvanic -SN" / "Galvanic -MN")
+const MOD_FORM_MAP = { 'Galvanic - SN':'Galvanic -SN', 'Galvanic - MN':'Galvanic -MN' };
+function modFormValue(m){ return MOD_FORM_MAP[m]||m; }
+const MACHINES   = ['Apilus XCell','Silhouet-tone XHD','Silhouet-tone 350','Gentronics MNG','Clareblend Essence','Clareblend Elegance','NA Consult only'];
+const MEGAHERTZ  = ['6.78','13.56','27.12','MNG no megahertz','NA consult only'];
+// Selecting one of these machines auto-selects its default megahertz
+const MACHINE_MHZ = { 'Apilus XCell':'27.12', 'Silhouet-tone 350':'6.78' };
+const FIL_MAT    = ['Insulated - Traditional (ITH/ISO Guard)','Stainless','Gold','Insulated - Blend (IBL/ISO Blend)'];
+const FIL_SIZE   = ['1','2','3','4','5','6'];
+const FIL_BRAND  = ['Ballet','Sterex','IBIS','Protec','Unknown','NA'];
+const BODY_AREAS = ['Upper lip','Chin','Cheeks','Jawline','Sideburns','Neck (front)','Neck (back)','Eyebrows','Ears','Chest','Breast/Areola','Abdomen','Underarms','Shoulders','Upper back','Lower back','Arms','Hands','Fingers','Bikini','Buttocks','Legs (upper)','Legs (lower)','Feet','Toes'];
+
+// Google Form entry IDs
+const ENTRY = {
+  patient:'1343389582', date:'168924125', apptType:'1061586759', technician:'890918643',
+  subjective:'1519303300', objective:'1459603147', assessment:'789531885', plan:'605200270',
+  modality:'702116306', machine:'1738958763', megahertz:'2063323894',
+  filMaterial:'652269251', filSize:'1227595158', filBrand:'754563532',
+  levels:'1149207424', timeSpent:'1086437070'
+};
+
+// Requirement category -> modality names that count toward it
+const REQ_MAP = {
+  galvanic:{ label:'Galvanic', mods:['Galvanic - SN','Galvanic - MN'] },
+  flashThermolysis:{ label:'Thermolysis - Flash', mods:['Thermolysis - Flash'] },
+  manualThermolysis:{ label:'Thermolysis - Manual', mods:['Thermolysis - Manual'] },
+  blend:{ label:'Blend', mods:['Blend'] }
+};
+const CHART_COLORS = ['#2F4F4F','#5f8787','#a7c4c4','#3d6666','#8faeae','#223a3a','#c9dede','#4a7a7a','#dcaa4b','#b5651d','#7a9e9e','#6b8f8f'];
+// Color-blind-safe (Okabe-Ito) per-modality styling for the modalities chart.
+// Galvanic = blue family, Thermolysis = orange family, Blend = the "between" reddish-purple,
+// Insertion = neutral gray. Textures distinguish within-family varieties beyond hue.
+const MOD_STYLE = {
+  'Galvanic - SN':        { color:'#0072B2', shape:'solid'    },
+  'Galvanic - MN':        { color:'#56B4E9', shape:'diagonal' },
+  'Thermolysis - Flash':  { color:'#E69F00', shape:'solid'    },
+  'Thermolysis - Manual': { color:'#D55E00', shape:'dot'      },
+  'Blend':                { color:'#CC79A7', shape:'zigzag'   },
+  'Insertion practice no energy': { color:'#999999', shape:'dash' }
+};
+// Resolve a modality label to a solid color or a patternomaly texture (falls back to solid).
+function modFill(label){
+  const st=MOD_STYLE[label]; if(!st) return '#999999';
+  if(st.shape==='solid' || typeof pattern==='undefined') return st.color;
+  try{ return pattern.draw(st.shape, st.color); }catch(e){ return st.color; }
+}
+
+/* ============================ STATE / STORAGE ============================ */
+function load(key, def){ try{ const v=localStorage.getItem(key); return v==null?def:JSON.parse(v); }catch(e){ return def; } }
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+const REQ_DEFAULTS = { galvanic:20, flashThermolysis:46, manualThermolysis:46, blend:46 };
+const UNT_DEFAULTS = { galvanic:0, flashThermolysis:0, manualThermolysis:0, blend:0, studentChoice:0 };
+function defaultSettings(){
+  return { studentName:'', schoolStartDate:'', totalProcedures:400,
+    observationProcedures:12, schoolHoursNeeded:400, formId:DEFAULT_FORM_ID, soapEmail:'',
+    requirements:{...REQ_DEFAULTS}, untracked:{...UNT_DEFAULTS} };
+}
+// backfill any missing nested-object keys (after load or import)
+function normalizeSettings(s){
+  s.requirements = Object.assign({}, REQ_DEFAULTS, s.requirements||{});
+  s.untracked = Object.assign({}, UNT_DEFAULTS, s.untracked||{});
+  return s;
+}
+
+const S = {
+  settings: Object.assign(defaultSettings(), load(K.settings, {})),
+  sessions: load(K.sessions, []),
+  calendar: load(K.calendar, {}),
+  assignments: load(K.assignments, []),
+  view: 'sessions',
+  calMonth: null,          // Date pointing at first of displayed month
+  charts: {},
+  propMode: 'proc',        // proportions weighting for all charts: 'proc' (default) or 'sess'
+  progMode: 'proc',        // progress over time mode: 'proc' (procedures) or 'hours' (school hours)
+  sessionFilter: emptyFilter(),
+  assignmentSort: { key:'dueDate', dir:'asc' },
+  assignmentFilter: emptyAssignmentFilter()
+};
+function emptyFilter(){ return { text:'', appointmentType:'', modality:'', machine:'', soap:'', from:'', to:'', filMaterial:'', filSize:'', filBrand:'', patientId:'' }; }
+function emptyAssignmentFilter(){ return { text:'', category:'', submitted:'', dueFrom:'', dueTo:'', plannedFrom:'', plannedTo:'' }; }
+normalizeSettings(S.settings);
+
+function persist(){ save(K.settings,S.settings); save(K.sessions,S.sessions); save(K.calendar,S.calendar); save(K.assignments,S.assignments); save(K.meta,{schemaVersion:DATA_SCHEMA_VERSION}); }
+
+/* ============================ UTILS ============================ */
+function uid(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function isoToParts(iso){ const [y,m,d]=String(iso).split('-').map(Number); return {y,m,d}; }
+function fmtDate(iso){
+  if(!iso) return '';
+  // tolerate legacy/non-ISO values (e.g. CSV-imported dates saved before normalization existed)
+  const s=/^\d{4}-\d{2}-\d{2}$/.test(iso)?iso:normalizeDateStr(iso);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.replace(/-/g,'/'):String(iso);
+}
+function monthLabel(iso){ const {y,m}=isoToParts(iso); return new Date(y,m-1,1).toLocaleDateString(undefined,{month:'long',year:'numeric'}); }
+/* ---- Appointment times: stored as UTC ISO, entered/displayed in Seattle (Pacific) ---- */
+const TZ='America/Los_Angeles';
+function tzParts(iso,opts){ return new Intl.DateTimeFormat('en-US',Object.assign({timeZone:TZ,hour12:false},opts)).formatToParts(new Date(iso)).reduce((a,p)=>{a[p.type]=p.value;return a;},{}); }
+// offset (ms) of Pacific wall-clock relative to UTC at the given instant (local - utc)
+function tzOffsetMs(date){ const p=tzParts(date,{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}); const h=p.hour==='24'?0:+p.hour; return Date.UTC(+p.year,+p.month-1,+p.day,h,+p.minute,+p.second)-date.getTime(); }
+// interpret a Pacific wall-clock ('YYYY-MM-DDTHH:MM') and return the matching UTC ISO instant
+function pacificWallToUTC(wall){ if(!wall) return ''; const naive=new Date(wall.length===16?wall+':00Z':wall+'Z'); let utc=new Date(naive.getTime()-tzOffsetMs(naive)); utc=new Date(naive.getTime()-tzOffsetMs(utc)); return utc.toISOString(); }
+function pacificToUTC(dateISO,hhmm){ return (dateISO&&hhmm)?pacificWallToUTC(dateISO+'T'+hhmm):''; }
+function isoAddDays(iso,n){ const {y,m,d}=isoToParts(iso); const dt=new Date(y,m-1,d+n); return dt.getFullYear()+'-'+pad2(dt.getMonth()+1)+'-'+pad2(dt.getDate()); }
+// UTC ISO -> Pacific { date:'YYYY-MM-DD', time:'HH:MM' } for form inputs
+function utcToPacific(iso){ if(!iso) return {date:'',time:''}; const p=tzParts(iso,{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); const hh=p.hour==='24'?'00':p.hour; return {date:p.year+'-'+p.month+'-'+p.day,time:hh+':'+p.minute}; }
+function fmtTime(iso){ if(!iso) return ''; return new Date(iso).toLocaleTimeString('en-US',{timeZone:TZ,hour:'numeric',minute:'2-digit'}); }
+function fmtTimeRange(s){ const a=fmtTime(s.startTime),b=fmtTime(s.endTime); return (a&&b)?a+'–'+b:(a||b||''); }
+// comparable chronological key: real start instant when known, else the service date at midnight
+function sessionOrder(s){ return s.startTime||((s.date||'')+'T00:00:00.000Z'); }
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function autoGrow(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+
+function fmtDur(mins){
+  const h=Math.floor(mins/60), m=mins%60, out=[];
+  if(h) out.push(h+'hr');
+  if(m) out.push(m+' minutes');
+  return out.length?out.join(' '):'0 minutes';
+}
+function fmtHrs(n){ return (+num(n).toFixed(2))+'h'; } // trims float noise, appends "h"
+
+/* ============================ PATIENT IDENTIFIER ============================ */
+// Wong colorblind-safe palette (excludes yellow and black — hard to read on white)
+const IDENTICON_COLORS=['#E69F00','#56B4E9','#009E73','#0072B2','#D55E00','#CC79A7','#2F4F4F','#5f8787'];
+async function patientIdFromName(name, salt){
+  const normalized=(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const input=normalized+(salt||'');
+  if(!input) return '';
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,8);
+}
+function patientIdSVG(hexId, size){
+  if(!hexId||hexId.length<8) return '';
+  size=size||32;
+  const hi=parseInt(hexId.slice(0,4),16), lo=parseInt(hexId.slice(4,8),16);
+  const color=IDENTICON_COLORS[lo&7];
+  // 5×5 symmetric grid: 15 unique cells (cols 0–2) mirrored to cols 3–4
+  const cells=[];
+  for(let col=0;col<3;col++){ cells[col]=[]; for(let row=0;row<5;row++) cells[col][row]=(hi>>(col*5+row))&1; }
+  const pad=2, cs=((size-pad*2)/5);
+  let rects='';
+  for(let row=0;row<5;row++) for(let col=0;col<5;col++){
+    const mc=col<=2?col:4-col;
+    if(cells[mc][row]) rects+='<rect x="'+(pad+col*cs).toFixed(1)+'" y="'+(pad+row*cs).toFixed(1)+'" width="'+cs.toFixed(1)+'" height="'+cs.toFixed(1)+'" rx="1.5" fill="'+color+'"/>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="border-radius:4px;background:#eef1f1;display:block;flex-shrink:0">'+rects+'</svg>';
+}
+function saltFieldHTML(id, placeholder){
+  return '<div class="pw-wrap"><input type="password" id="'+id+'" placeholder="'+esc(placeholder)+'">'+
+    '<button class="pw-toggle" type="button" data-act="toggle-pw" data-pw-target="'+id+'">Show</button></div>';
+}
+function patientSectionHTML(existingId){
+  if(existingId){
+    return '<div class="pid-section" id="sf-pid-section">'+
+      '<span class="flabel" style="display:block;margin-bottom:8px">Patient Identifier</span>'+
+      '<div id="sf-pid-current" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        patientIdSVG(existingId,40)+
+        '<span class="pid-badge" style="font-size:14px">'+esc(existingId)+'</span>'+
+        '<button class="btn btn-g btn-sm" id="sf-pid-regen-btn" type="button">Regenerate…</button>'+
+        '<button class="btn btn-d btn-sm" id="sf-pid-remove-btn" type="button">Remove</button>'+
+      '</div>'+
+      '<div id="sf-pid-regen-ui" style="display:none;margin-top:12px">'+
+        '<div class="frow" style="margin-bottom:8px">'+
+          '<div class="fg wide"><label for="sf-pid-name">Patient name</label><input type="text" id="sf-pid-name" placeholder="Full name"></div>'+
+          '<div class="fg wide"><label for="sf-pid-salt">Salt / secret phrase</label>'+saltFieldHTML('sf-pid-salt','Your shared phrase')+'</div>'+
+        '</div>'+
+        '<button class="btn btn-g btn-sm" id="sf-pid-generate" type="button">Generate new ID</button>'+
+        '<div id="sf-pid-result" style="display:none;margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap"></div>'+
+      '</div>'+
+    '</div>';
+  }
+  return '<div class="pid-section" id="sf-pid-section">'+
+    '<span class="flabel" style="display:block;margin-bottom:4px">Patient Identifier <span class="hint" style="text-transform:none;letter-spacing:0">(optional)</span></span>'+
+    '<div class="hint" style="text-transform:none;letter-spacing:0;margin-bottom:10px">Enter the patient\'s name and a shared salt phrase to generate a privacy-safe ID. The name is never stored.</div>'+
+    '<div class="frow" style="margin-bottom:8px">'+
+      '<div class="fg wide"><label for="sf-pid-name">Patient name</label><input type="text" id="sf-pid-name" placeholder="Full name, e.g. Jane Smith"></div>'+
+      '<div class="fg wide"><label for="sf-pid-salt">Salt / secret phrase</label>'+saltFieldHTML('sf-pid-salt','Your shared phrase')+'</div>'+
+    '</div>'+
+    '<button class="btn btn-g btn-sm" id="sf-pid-generate" type="button">Generate ID</button>'+
+    '<div id="sf-pid-result" style="display:none;margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap"></div>'+
+  '</div>';
+}
+
+function sessionProcedures(sess){
+  if(sess.appointmentType==='Consult') return 0;
+  return Object.values(sess.modalities||{}).reduce((a,v)=>a+num(v),0);
+}
+function genTimeText(modalities){
+  const entries=Object.entries(modalities||{}).filter(([,v])=>num(v)>0);
+  const total=entries.reduce((a,[,v])=>a+num(v),0);
+  if(total===0) return '';
+  let text=fmtDur(total*15)+' = '+total+' procedure'+(total>1?'s':'')+' total';
+  if(entries.length>1){
+    text+='. '+entries.map(([k,v])=>k+': '+v+' procedure'+(num(v)>1?'s':'')).join(', ');
+  }
+  return text;
+}
+
+/* ============================ NAVIGATION ============================ */
+function destroyCharts(){ Object.values(S.charts).forEach(c=>{try{c.destroy();}catch(e){}}); S.charts={}; const t=document.getElementById('legend-tip'); if(t) t.style.display='none'; }
+function showView(name){
+  S.view=name;
+  if(NAV_VIEWS.includes(name)) save(K.view, name); // remember the active tab across page refreshes
+  if(name!=='reports') destroyCharts(); // release Chart.js instances + their ResizeObservers when leaving Reports
+  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.nav===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const map={ reports:renderReports, calendar:renderCalendar, sessions:renderSessions, patients:renderPatients, assignments:renderAssignments, settings:renderSettings, about:renderAbout };
+  if(map[name]){ document.getElementById('view-'+name).classList.add('active'); map[name](); }
+}
+/* ---- Hash routing: navigation writes the URL hash; the router renders. In-place refreshes
+   (edit-save, filters) still call render fns directly. Hash is used (not ?query) so it works
+   from file:// without reloading and gives browser back/forward. ---- */
+function navTo(route){ // route: 'sessions' or 'session/<id>'
+  const h='#/'+route;
+  if(location.hash===h) router(); // same hash won't fire hashchange — run router manually
+  else location.hash=h;           // otherwise the hashchange listener drives router()
+}
+function router(){
+  const raw=(location.hash||'').replace(/^#\/?/,'');
+  const slash=raw.indexOf('/');
+  const seg=slash===-1?raw:raw.slice(0,slash);
+  const arg=slash===-1?'':raw.slice(slash+1);
+  if(seg==='session' && arg){ renderSessionView(arg); return; } // renderSessionView guards missing ids
+  if(seg==='patient' && arg){ renderPatientView(arg); return; }
+  if(seg==='day' && arg){ renderDayView(arg); return; }
+  if(seg==='assignment' && arg){ renderAssignmentView(arg); return; }
+  if(NAV_VIEWS.includes(seg)){ showView(seg); return; }
+  const saved=load(K.view,'reports');                           // no/invalid hash → last-used tab
+  showView(NAV_VIEWS.includes(saved)?saved:'reports');
+}
+
+/* ============================ MODAL ============================ */
+function openModal(inner, cls){
+  const root=document.getElementById('modal-root');
+  const overlay=el('<div class="overlay"></div>');
+  overlay.innerHTML='<div class="modal '+(cls||'')+'">'+inner+'</div>';
+  root.appendChild(overlay);
+  return overlay;
+}
+function closeModal(){ document.getElementById('modal-root').innerHTML=''; }
+
+function confirmDialog(title, message, okLabel){
+  return new Promise(res=>{
+    const ov=openModal(
+      '<div class="modal-head">'+esc(title)+'<button class="x" data-c>&times;</button></div>'+
+      '<div class="modal-body">'+message+'</div>'+
+      '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" data-ok>'+esc(okLabel||'OK')+'</button></div>','sm');
+    ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{closeModal();res(false);});
+    ov.querySelector('[data-ok]').onclick=()=>{closeModal();res(true);};
+  });
+}
+
+/* ============================ ONBOARDING ============================ */
+function maybeOnboard(){
+  if(S.settings.studentName && S.settings.schoolStartDate) return false;
+  const ov=openModal(
+    '<div class="modal-head">Welcome to your Session Tracker</div>'+
+    '<div class="modal-body">'+
+      '<p class="hint" style="margin-bottom:14px">Let’s get a couple things set up. You can change these later in Settings.</p>'+
+      '<div class="field-block"><label for="ob-name">Student name</label><input type="text" id="ob-name" placeholder="Your full name"></div>'+
+      '<div class="field-block"><label for="ob-email">Email for SOAP submissions</label><input type="email" id="ob-email" placeholder="you@example.com"><div class="hint" style="text-transform:none;letter-spacing:0">Prefills the “email address” field on the Google Form.</div></div>'+
+      '<div class="field-block"><label for="ob-date">Date school started</label><input type="date" id="ob-date" value="'+todayISO()+'"></div>'+
+      '<hr class="section-sep">'+
+      '<p class="hint" style="margin-bottom:8px">Already have a saved backup? Load it instead of starting fresh.</p>'+
+      '<button class="btn btn-g" id="ob-load">Load a data backup (.json)…</button>'+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-p" id="ob-save">Get started</button></div>','sm');
+  ov.querySelector('#ob-save').onclick=()=>{
+    const name=ov.querySelector('#ob-name').value.trim();
+    const date=ov.querySelector('#ob-date').value;
+    if(!name || !date){ ov.querySelector('#ob-name').focus(); return; }
+    S.settings.studentName=name; S.settings.schoolStartDate=date;
+    S.settings.soapEmail=ov.querySelector('#ob-email').value.trim();
+    persist(); closeModal(); refreshChrome(); navTo('sessions');
+  };
+  ov.querySelector('#ob-load').onclick=()=>importJSON(onboardImport);
+  return true;
+}
+function refreshChrome(){ document.getElementById('brand-who').textContent = S.settings.studentName? '— '+S.settings.studentName : ''; }
+
+/* ============================ SESSIONS LIST ============================ */
+function filterActive(){ const f=S.sessionFilter; return !!(f.text||f.appointmentType||f.modality||f.machine||f.soap||f.from||f.to||f.filMaterial||f.filSize||f.filBrand||f.patientId); }
+const FILTER_NONE='__none__'; // sentinel: match sessions missing this value
+function matchesFilter(s){
+  const f=S.sessionFilter;
+  const arrMatch=(val,arr)=>{ if(!val) return true; if(val===FILTER_NONE) return !(arr||[]).length; return (arr||[]).includes(val); };
+  if(f.appointmentType && s.appointmentType!==f.appointmentType) return false;
+  if(f.modality && !(num((s.modalities||{})[f.modality])>0)) return false;
+  if(!arrMatch(f.machine,s.machines)) return false;
+  if(!arrMatch(f.filMaterial,s.filamentMaterial)) return false;
+  if(!arrMatch(f.filSize,s.filamentSize)) return false;
+  if(!arrMatch(f.filBrand,s.filamentBrand)) return false;
+  if(f.soap==='yes' && !s.soapSubmitted) return false;
+  if(f.soap==='no' && (s.soapSubmitted || futureSession(s))) return false;
+  if(f.from && (s.date||'')<f.from) return false;
+  if(f.to && (s.date||'')>f.to) return false;
+  if(f.patientId && s.patientId!==f.patientId) return false;
+  if(f.text){
+    const hay=[s.technician,s.levelsUsed,s.timeSpentText,s.bodyAreasNote,s.myNotes,s.subjective,s.objective,s.assessment,s.plan,
+      (s.bodyAreas||[]).join(' '),(s.machines||[]).join(' '),(s.filamentBrand||[]).join(' '),(s.filamentMaterial||[]).join(' ')]
+      .join(' \n ').toLowerCase();
+    if(!hay.includes(f.text.toLowerCase())) return false;
+  }
+  return true;
+}
+function filterSummary(){
+  const f=S.sessionFilter, parts=[];
+  if(f.text) parts.push('“'+f.text+'”');
+  if(f.appointmentType) parts.push('type: '+f.appointmentType);
+  if(f.modality) parts.push('modality: '+f.modality);
+  const showVal=v=>v===FILTER_NONE?'(missing)':v;
+  if(f.machine) parts.push('machine: '+showVal(f.machine));
+  if(f.filMaterial) parts.push('filament material: '+showVal(f.filMaterial));
+  if(f.filSize) parts.push('filament size: '+showVal(f.filSize));
+  if(f.filBrand) parts.push('filament brand: '+showVal(f.filBrand));
+  if(f.soap) parts.push('SOAP '+(f.soap==='yes'?'submitted':'not submitted'));
+  if(f.from) parts.push('from '+fmtDate(f.from));
+  if(f.to) parts.push('to '+fmtDate(f.to));
+  if(f.patientId) parts.push('patient: '+f.patientId);
+  return parts.join(' · ');
+}
+const MAT_SHORT={'Insulated - Traditional (ITH/ISO Guard)':'Ins-Trad','Stainless':'Stainless','Gold':'Gold','Insulated - Blend (IBL/ISO Blend)':'Ins-Blend'};
+function shortMod(name){ return name.replace('Thermolysis - ','').replace('Galvanic - ','Galv '); }
+function renderSessions(){
+  const v=document.getElementById('view-sessions');
+  const all = S.sessions.slice().sort((a,b)=>sessionOrder(b).localeCompare(sessionOrder(a)));
+  const active=filterActive();
+  const rows = active ? all.filter(matchesFilter) : all;
+  const banner = active
+    ? '<div class="warn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+      '<span>Filtered: showing <b>'+rows.length+'</b> of '+all.length+' sessions'+(filterSummary()?' — '+esc(filterSummary()):'')+'</span>'+
+      '<button class="btn btn-g btn-sm" id="clear-filter">Clear filter</button></div>'
+    : '';
+  let body;
+  if(!all.length){
+    body='<div class="empty">No sessions yet. Click “New Session” to log your first procedure.</div>';
+  } else if(!rows.length){
+    body='<div class="empty">No sessions match the current filter.</div>';
+  } else {
+    body='<div class="tbl-wrap"><table class="tbl"><thead>'+
+      '<tr>'+
+        '<th rowspan="2">SOAP</th><th rowspan="2">Patient</th><th rowspan="2">Date</th><th rowspan="2">Time</th><th rowspan="2">Type</th><th rowspan="2">Proc.</th><th rowspan="2">Modalities</th><th rowspan="2">Machines</th>'+
+        '<th colspan="3" style="text-align:center">Filament</th>'+
+        '<th rowspan="2"></th>'+
+      '</tr>'+
+      '<tr><th>Material</th><th>Size</th><th>Brand</th></tr>'+
+      '</thead><tbody>'+
+      rows.map(s=>{
+        const modLines=Object.entries(s.modalities||{}).filter(([,c])=>num(c)>0)
+          .map(([k,c])=>'<div class="mod-line"><span class="num-badge">'+c+'</span>'+esc(shortMod(k))+'</div>').join('');
+        const cell=arr=>{ const t=(arr||[]).join(', '); return t?esc(t):DASH; };
+        const mat=(s.filamentMaterial||[]).map(m=>MAT_SHORT[m]||m);
+        return '<tr>'+
+          '<td><button class="soap-btn" data-soap="'+s.id+'" title="Set SOAP status">'+(s.soapSubmitted?'<span class="tick">✓</span>':(futureSession(s)?DASH:'<span class="soap-flag" title="SOAP not submitted">!</span>'))+'</button></td>'+
+          '<td>'+(s.patientId?'<div class="pid-cell">'+patientIdSVG(s.patientId,28)+'<span class="pid-badge">'+esc(s.patientId)+'</span></div>':DASH)+'</td>'+
+          '<td>'+(s.date?esc(fmtDate(s.date)):DASH)+'</td>'+
+          '<td style="white-space:nowrap">'+(fmtTimeRange(s)?esc(fmtTimeRange(s)):DASH)+'</td>'+
+          '<td>'+apptPill(s.appointmentType)+'</td>'+
+          '<td>'+sessionProcedures(s)+'</td>'+
+          '<td>'+(modLines||DASH)+'</td>'+
+          '<td>'+cell(s.machines)+'</td>'+
+          '<td>'+cell(mat)+'</td>'+
+          '<td>'+cell(s.filamentSize)+'</td>'+
+          '<td>'+cell(s.filamentBrand)+'</td>'+
+          '<td><span style="display:flex;gap:6px"><button class="btn btn-a btn-sm" data-view="'+s.id+'">View</button><button class="btn btn-g btn-sm" data-edit="'+s.id+'">Edit</button></span></td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table></div>';
+  }
+  v.innerHTML='<div class="page-title">Sessions <span style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn '+(active?'btn-a':'btn-g')+'" id="filter-session">Filter'+(active?' ('+rows.length+')':'')+'</button>'+
+      '<div class="dropdown"><button class="btn btn-g" data-dd="export-menu-sessions">Export ▾</button>'+
+        '<div class="dd-menu" id="export-menu-sessions"><button id="sessions-export-csv">CSV</button><button id="sessions-export-tsv">TSV</button></div></div>'+
+      '<div class="dropdown"><button class="btn btn-g" data-dd="import-menu-sessions">Import ▾</button>'+
+        '<div class="dd-menu" id="import-menu-sessions"><button id="sessions-import-csv">CSV</button><button id="sessions-import-tsv">TSV</button></div></div>'+
+      '<button class="btn btn-p" id="new-session">+ New Session</button></span></div>'+
+    banner+
+    '<div class="panel"><div class="pb">'+body+'</div></div>';
+  v.querySelector('#new-session').onclick=()=>openSessionForm(null);
+  v.querySelector('#filter-session').onclick=()=>openFilterForm();
+  const cf=v.querySelector('#clear-filter'); if(cf) cf.onclick=()=>{ S.sessionFilter=emptyFilter(); renderSessions(); };
+  v.querySelector('#sessions-export-csv').onclick=()=>exportSessionsCSV();
+  v.querySelector('#sessions-export-tsv').onclick=()=>exportSessionsTSV();
+  v.querySelector('#sessions-import-csv').onclick=()=>startCsvImport('sessions','csv');
+  v.querySelector('#sessions-import-tsv').onclick=()=>startCsvImport('sessions','tsv');
+  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ navTo('session/'+b.dataset.view); });
+  v.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{ openSessionForm(b.dataset.edit); });
+  v.querySelectorAll('[data-soap]').forEach(b=>b.onclick=()=>openSoapForm(b.dataset.soap));
+}
+function openPatientPickerModal(currentPid, onSelect){
+  const patientMap={};
+  S.sessions.forEach(s=>{ if(s.patientId) patientMap[s.patientId]=(patientMap[s.patientId]||0)+1; });
+  const patients=Object.entries(patientMap).sort((a,b)=>b[1]-a[1]); // most sessions first
+  const tilesHTML=patients.map(([pid,count])=>
+    '<button class="patient-tile'+(pid===currentPid?' selected':'')+'" data-pid="'+esc(pid)+'" type="button">'+
+      patientIdSVG(pid,56)+
+      '<div class="patient-tile-id">'+esc(pid)+'</div>'+
+      '<div class="patient-tile-count">'+count+' session'+(count!==1?'s':'')+'</div>'+
+    '</button>'
+  ).join('');
+  const ov=openModal(
+    '<div class="modal-head">Select a Patient<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body">'+
+      (patients.length
+        ? '<div class="patient-grid">'+tilesHTML+'</div>'
+        : '<div class="empty">No patient identifiers found in sessions.</div>')+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button></div>'
+  );
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelectorAll('.patient-tile').forEach(b=>b.onclick=()=>{ closeModal(); onSelect(b.dataset.pid); });
+}
+
+/* ============================ PATIENTS ============================ */
+function patientsSummary(){
+  const byPid={};
+  S.sessions.forEach(s=>{ if(!s.patientId) return; (byPid[s.patientId]=byPid[s.patientId]||[]).push(s); });
+  return Object.entries(byPid).map(([pid,sess])=>{
+    const dates=sess.map(s=>s.date).filter(Boolean).sort();
+    return {
+      pid, sessions:sess,
+      sessionCount:sess.length,
+      procedureCount:sess.reduce((n,s)=>n+sessionProcedures(s),0),
+      soapNeeded:sess.filter(s=>!s.soapSubmitted && !futureSession(s)).length,
+      firstDate:dates[0]||'', lastDate:dates[dates.length-1]||''
+    };
+  }).sort((a,b)=>(b.lastDate||'').localeCompare(a.lastDate||''));
+}
+function renderPatients(){
+  const v=document.getElementById('view-patients');
+  const patients=patientsSummary();
+  let body;
+  if(!patients.length){
+    body='<div class="empty">No patient identifiers found in sessions yet.</div>';
+  } else {
+    body='<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+      '<th>Patient</th><th>Sessions</th><th>Procedures</th><th>SOAP needed</th><th>Last session</th><th></th>'+
+      '</tr></thead><tbody>'+
+      patients.map(p=>
+        '<tr>'+
+          '<td><div class="pid-cell">'+patientIdSVG(p.pid,28)+'<span class="pid-badge">'+esc(p.pid)+'</span></div></td>'+
+          '<td>'+p.sessionCount+'</td>'+
+          '<td>'+p.procedureCount+'</td>'+
+          '<td>'+(p.soapNeeded?'<span class="soap-flag" title="SOAP not submitted">'+p.soapNeeded+'</span>':'0')+'</td>'+
+          '<td>'+(p.lastDate?esc(fmtDate(p.lastDate)):DASH)+'</td>'+
+          '<td><button class="btn btn-a btn-sm" data-view="'+esc(p.pid)+'">View</button></td>'+
+        '</tr>'
+      ).join('')+
+      '</tbody></table></div>';
+  }
+  v.innerHTML='<div class="page-title">Patients</div><div class="panel"><div class="pb">'+body+'</div></div>';
+  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navTo('patient/'+b.dataset.view));
+  v.querySelectorAll('tbody tr').forEach((tr,i)=>{ tr.style.cursor='pointer'; tr.onclick=(e)=>{ if(e.target.closest('button')) return; navTo('patient/'+patients[i].pid); }; });
+}
+function renderPatientView(pid){
+  const sess=S.sessions.filter(s=>s.patientId===pid);
+  if(!sess.length){ navTo('patients'); return; }
+  S.view='patient'; // pseudo-view (not a nav tab, so K.view isn't persisted)
+  destroyCharts();
+  const v=document.getElementById('view-patient');
+  const rows=sess.slice().sort((a,b)=>sessionOrder(b).localeCompare(sessionOrder(a)));
+  const p=patientsSummary().find(x=>x.pid===pid) || { sessionCount:rows.length, procedureCount:rows.reduce((n,s)=>n+sessionProcedures(s),0), soapNeeded:0, firstDate:'', lastDate:'' };
+  const tableBody=rows.map(s=>{
+    const modLines=Object.entries(s.modalities||{}).filter(([,c])=>num(c)>0)
+      .map(([k,c])=>'<div class="mod-line"><span class="num-badge">'+c+'</span>'+esc(shortMod(k))+'</div>').join('');
+    return '<tr>'+
+      '<td>'+(s.soapSubmitted?'<span class="tick">✓</span>':(futureSession(s)?DASH:'<span class="soap-flag" title="SOAP not submitted">!</span>'))+'</td>'+
+      '<td>'+(s.date?esc(fmtDate(s.date)):DASH)+'</td>'+
+      '<td style="white-space:nowrap">'+(fmtTimeRange(s)?esc(fmtTimeRange(s)):DASH)+'</td>'+
+      '<td>'+apptPill(s.appointmentType)+'</td>'+
+      '<td>'+sessionProcedures(s)+'</td>'+
+      '<td>'+(modLines||DASH)+'</td>'+
+      '<td><button class="btn btn-a btn-sm" data-view="'+s.id+'">View</button></td>'+
+    '</tr>';
+  }).join('');
+  v.innerHTML=
+    '<div class="page-title"><span style="display:flex;align-items:center;gap:10px">'+patientIdSVG(pid,32)+'Patient — '+esc(pid)+'</span>'+
+      '<span style="display:flex;gap:8px"><button class="btn btn-g" id="pv-rename">Rename Patient…</button><button class="btn btn-g" id="pv-back">← Back</button></span></div>'+
+    '<div class="panel"><div class="pb"><div class="sv-grid">'+
+      svItem('Sessions',String(p.sessionCount))+
+      svItem('Procedures',String(p.procedureCount))+
+      svItem('SOAP needed',String(p.soapNeeded))+
+      svItem('First session',p.firstDate?fmtDate(p.firstDate):'')+
+      svItem('Last session',p.lastDate?fmtDate(p.lastDate):'')+
+    '</div></div></div>'+
+    '<div class="panel"><div class="pb"><div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+      '<th>SOAP</th><th>Date</th><th>Time</th><th>Type</th><th>Proc.</th><th>Modalities</th><th></th>'+
+      '</tr></thead><tbody>'+tableBody+'</tbody></table></div></div></div>';
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  v.classList.add('active');
+  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='patients'));
+  v.querySelector('#pv-back').onclick=()=>navTo('patients');
+  v.querySelector('#pv-rename').onclick=()=>openRenamePatientModal(pid);
+  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navTo('session/'+b.dataset.view));
+}
+
+// Rename a patient identifier across every session that carries it. Requires the old
+// name + shared salt to re-derive and confirm the *current* pid (a typo-guard — there's
+// no reverse lookup from hash to name) before computing and previewing the new hash.
+function openRenamePatientModal(pid){
+  const ov=openModal(
+    '<div class="modal-head">Rename Patient<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body">'+
+      '<div class="hint" style="text-transform:none;letter-spacing:0;margin-bottom:12px">Confirming the old name '+
+      're-derives <b>'+esc(pid)+'</b> as a safety check before any sessions are changed — the app never stores '+
+      'raw patient names, only the hash.</div>'+
+      '<div class="frow" style="margin-bottom:8px">'+
+        '<div class="fg wide"><label for="rp-old-name">Old name</label><input type="text" id="rp-old-name" placeholder="Current full name"></div>'+
+        '<div class="fg wide"><label for="rp-salt">Salt / secret phrase</label>'+saltFieldHTML('rp-salt','Your shared phrase')+'</div>'+
+      '</div>'+
+      '<div class="frow" style="margin-bottom:8px">'+
+        '<div class="fg wide"><label for="rp-new-name">New name</label><input type="text" id="rp-new-name" placeholder="New full name"></div>'+
+      '</div>'+
+      '<button class="btn btn-g btn-sm" id="rp-preview" type="button">Preview</button>'+
+      '<div id="rp-result" style="display:none;margin-top:14px"></div>'+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="rp-apply" disabled>Rename</button></div>'
+  );
+  let newId='';
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  const applyBtn=ov.querySelector('#rp-apply');
+  ov.querySelector('#rp-preview').onclick=async()=>{
+    const oldName=ov.querySelector('#rp-old-name').value.trim();
+    const salt=ov.querySelector('#rp-salt').value;
+    const newName=ov.querySelector('#rp-new-name').value.trim();
+    if(!oldName||!newName){ alert('Enter both the old and new name.'); return; }
+    const oldCheck=await patientIdFromName(oldName,salt);
+    const computedNewId=await patientIdFromName(newName,salt);
+    const result=ov.querySelector('#rp-result');
+    const matches=oldCheck===pid;
+    let html='';
+    if(!matches){
+      html+='<div class="hint" style="text-transform:none;letter-spacing:0;color:var(--danger,#b5651d)">✕ Old name + salt doesn’t match this patient’s current ID ('+esc(oldCheck||'—')+'). Double-check the name and salt.</div>';
+    } else {
+      html+='<div class="hint" style="text-transform:none;letter-spacing:0;color:var(--ok,#2f6f4f)">✓ Old name + salt confirmed.</div>';
+    }
+    html+='<div style="display:flex;align-items:center;gap:10px;margin-top:10px">'+patientIdSVG(computedNewId,40)+
+      '<span class="pid-badge" style="font-size:14px">'+esc(computedNewId)+'</span></div>';
+    const merging=matches && computedNewId!==pid && S.sessions.some(s=>s.patientId===computedNewId);
+    if(merging){
+      html+='<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:8px;color:var(--warn-border,#b5651d)">⚠ This ID is already used by another patient — renaming will merge both under this ID.</div>';
+    }
+    if(matches && computedNewId===pid){
+      html+='<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:8px">New name produces the same ID — nothing to change.</div>';
+    }
+    result.innerHTML=html; result.style.display='block';
+    newId=(matches && computedNewId!==pid)?computedNewId:'';
+    applyBtn.disabled=!newId;
+  };
+  applyBtn.onclick=async()=>{
+    if(!newId) return;
+    const count=S.sessions.filter(s=>s.patientId===pid).length;
+    if(!await confirmDialog('Rename patient','<p>Change the patient ID on <b>'+count+'</b> session'+(count===1?'':'s')+' from '+esc(pid)+' to <b>'+esc(newId)+'</b>?</p>','Rename')) return;
+    S.sessions.forEach(s=>{ if(s.patientId===pid) s.patientId=newId; });
+    persist(); closeModal(); navTo('patient/'+newId);
+  };
+}
+
+function openFilterForm(){
+  const f=S.sessionFilter;
+  const opts=(arr,sel)=>'<option value="">Any</option>'+arr.map(o=>'<option'+(sel===o?' selected':'')+'>'+esc(o)+'</option>').join('');
+  const optsN=(arr,sel)=>'<option value="">Any</option><option value="'+FILTER_NONE+'"'+(sel===FILTER_NONE?' selected':'')+'>— Missing / none —</option>'+arr.map(o=>'<option'+(sel===o?' selected':'')+'>'+esc(o)+'</option>').join('');
+  const hasPatients=S.sessions.some(s=>s.patientId);
+  const ov=openModal(
+    '<div class="modal-head">Filter Sessions<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body" id="filter-form">'+
+      '<div class="field-block"><label for="ff-text">Contains text</label><input type="text" id="ff-text" value="'+esc(f.text)+'" placeholder="Search SOAP, notes, technician, areas…"></div>'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="ff-type">Type</label><select id="ff-type">'+opts(APPT_TYPES,f.appointmentType)+'</select></div>'+
+        '<div class="fg"><label for="ff-soap">SOAP</label><select id="ff-soap">'+
+          '<option value="">Any</option><option value="yes"'+(f.soap==='yes'?' selected':'')+'>Submitted</option><option value="no"'+(f.soap==='no'?' selected':'')+'>Not submitted</option></select></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="ff-mod">Modality</label><select id="ff-mod">'+opts(MODALITIES,f.modality)+'</select></div>'+
+        '<div class="fg wide"><label for="ff-mach">Machine</label><select id="ff-mach">'+optsN(MACHINES,f.machine)+'</select></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="ff-fmat">Filament material</label><select id="ff-fmat">'+optsN(FIL_MAT,f.filMaterial)+'</select></div>'+
+        '<div class="fg xs"><label for="ff-fsize">Filament size</label><select id="ff-fsize">'+optsN(FIL_SIZE,f.filSize)+'</select></div>'+
+        '<div class="fg"><label for="ff-fbrand">Filament brand</label><select id="ff-fbrand">'+optsN(FIL_BRAND,f.filBrand)+'</select></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="ff-from">Date from</label><input type="date" id="ff-from" value="'+esc(f.from)+'"></div>'+
+        '<div class="fg"><label for="ff-to">Date to</label><input type="date" id="ff-to" value="'+esc(f.to)+'"></div>'+
+      '</div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block">'+
+        '<span class="flabel">Patient</span>'+
+        (hasPatients?'<div style="margin-bottom:10px"><button class="btn btn-a btn-sm" id="ff-pid-browse" type="button">Browse patients…</button>'+(f.patientId?'<span style="margin-left:8px;display:inline-flex;align-items:center;gap:6px;vertical-align:middle">'+patientIdSVG(f.patientId,22)+'<span class="pid-badge">'+esc(f.patientId)+'</span></span>':'')+'</div>':'')+
+        '<div class="frow" style="margin-bottom:8px">'+
+          '<div class="fg wide"><label for="ff-pid">Patient ID (direct entry)</label><input type="text" id="ff-pid" value="'+esc(f.patientId||'')+'" placeholder="e.g. a1b2c3d4" maxlength="8"></div>'+
+        '</div>'+
+        '<div class="hint" style="text-transform:none;letter-spacing:0;margin-bottom:8px">— or generate from name + salt —</div>'+
+        '<div class="frow">'+
+          '<div class="fg wide"><label for="ff-pid-name">Patient name</label><input type="text" id="ff-pid-name" placeholder="Full name"></div>'+
+          '<div class="fg wide"><label for="ff-pid-salt">Salt / secret phrase</label>'+saltFieldHTML('ff-pid-salt','Your shared phrase')+'</div>'+
+        '</div>'+
+        '<button class="btn btn-g btn-sm" id="ff-pid-gen" type="button">Generate &amp; Apply</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" id="ff-clear">Clear all</button><span style="flex:1"></span><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="ff-apply">Apply filter</button></div>'
+  );
+  function readFilterFields(){ return { text:ov.querySelector('#ff-text').value.trim(), appointmentType:ov.querySelector('#ff-type').value,
+    modality:ov.querySelector('#ff-mod').value, machine:ov.querySelector('#ff-mach').value,
+    filMaterial:ov.querySelector('#ff-fmat').value, filSize:ov.querySelector('#ff-fsize').value, filBrand:ov.querySelector('#ff-fbrand').value,
+    soap:ov.querySelector('#ff-soap').value, from:ov.querySelector('#ff-from').value, to:ov.querySelector('#ff-to').value,
+    patientId:ov.querySelector('#ff-pid').value.trim() }; }
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelector('#ff-clear').onclick=()=>{ S.sessionFilter=emptyFilter(); closeModal(); renderSessions(); };
+  ov.querySelector('#ff-apply').onclick=()=>{ S.sessionFilter=readFilterFields(); closeModal(); renderSessions(); };
+  const ffBrowse=ov.querySelector('#ff-pid-browse');
+  if(ffBrowse) ffBrowse.onclick=()=>{
+    const fields=readFilterFields(); // capture filter form state before opening picker
+    openPatientPickerModal(fields.patientId, pid=>{
+      S.sessionFilter=Object.assign(fields,{patientId:pid});
+      renderSessions();
+    });
+  };
+  ov.querySelector('#ff-pid-gen').onclick=async()=>{
+    const name=ov.querySelector('#ff-pid-name').value.trim();
+    const salt=ov.querySelector('#ff-pid-salt').value;
+    if(!name){ alert('Enter a patient name to generate an ID.'); return; }
+    const id=await patientIdFromName(name,salt);
+    if(!id) return;
+    S.sessionFilter=Object.assign(readFilterFields(),{patientId:id});
+    closeModal(); renderSessions();
+  };
+}
+function apptPill(t){
+  const cls={ 'Consult':'pill-consult','Service':'pill-service','Colleague':'pill-colleague','Self work':'pill-self' }[t]||'pill-consult';
+  return t? '<span class="pill '+cls+'">'+esc(t)+'</span>' : DASH;
+}
+
+/* ============================ SESSION FORM ============================ */
+function cbGroup(group, options, selected){
+  const set=new Set(selected||[]);
+  return '<div class="cbgrid tight">'+options.map(o=>
+    '<label class="cbitem"><input type="checkbox" data-group="'+group+'" value="'+esc(o)+'"'+(set.has(o)?' checked':'')+'>'+esc(o)+'</label>'
+  ).join('')+'</div>';
+}
+function readGroup(scope, group){ return [...scope.querySelectorAll('[data-group="'+group+'"]:checked')].map(x=>x.value); }
+
+function openSoapForm(id){
+  const s=S.sessions.find(x=>x.id===id); if(!s) return;
+  const ov=openModal(
+    '<div class="modal-head">SOAP status — '+esc(fmtDate(s.date))+'<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body"><label class="cbitem"><input type="checkbox" id="soap-cb"'+(s.soapSubmitted?' checked':'')+'> SOAP submitted</label></div>'+
+    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="soap-save">Save</button></div>','sm');
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelector('#soap-save').onclick=()=>{
+    s.soapSubmitted=ov.querySelector('#soap-cb').checked;
+    persist(); closeModal(); renderSessions();
+  };
+}
+
+function openSessionForm(id, prefillDate){
+  const s = id ? S.sessions.find(x=>x.id===id) : {
+    id:null, date:prefillDate||todayISO(), appointmentType:'Service', technician:S.settings.studentName||'',
+    subjective:'',objective:'',assessment:'',plan:'', modalities:{},
+    machines:[],megahertz:[],filamentMaterial:[],filamentSize:[],filamentBrand:[],
+    levelsUsed:'', timeSpentText:'', soapSubmitted:false, bodyAreas:[], bodyAreasNote:'', myNotes:''
+  };
+  const modRows=MODALITIES.map((m,i)=>
+    '<div class="mod-row"><label for="mod_'+i+'">'+esc(m)+'</label>'+
+    '<input type="number" min="0" step="1" id="mod_'+i+'" value="'+(s.modalities[m]||'')+'" data-modidx="'+i+'"></div>'
+  ).join('');
+  const stP=utcToPacific(s.startTime), etP=utcToPacific(s.endTime);
+
+  let pendingPatientId=s.patientId||'';
+  let autoFilledPidValue=''; // tracks which ID was auto-filled from Self work (for undo)
+
+  const ov=openModal(
+    '<div class="modal-head">'+(id?'Edit Session':'New Session')+'<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body" id="session-form">'+
+      patientSectionHTML(s.patientId||'')+
+      '<hr class="section-sep">'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="sf-date">Date of Service *</label><input type="date" id="sf-date" value="'+esc(s.date||'')+'"></div>'+
+        '<div class="fg"><label for="sf-type">Type of Appointment</label><select id="sf-type">'+APPT_TYPES.map(t=>'<option'+(s.appointmentType===t?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></div>'+
+        '<div class="fg wide"><label for="sf-tech">Technician</label><input type="text" id="sf-tech" value="'+esc(s.technician||'')+'"></div>'+
+        '<div class="fg xs" style="max-width:140px"><label class="cbitem" style="padding-top:22px"><input type="checkbox" id="sf-soap"'+(s.soapSubmitted?' checked':'')+'> SOAP submitted</label></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="sf-start">Appointment start (Pacific)</label><input type="time" id="sf-start" value="'+esc(stP.time)+'"></div>'+
+        '<div class="fg"><label for="sf-end">Appointment end (Pacific)</label><input type="time" id="sf-end" value="'+esc(etP.time)+'"></div>'+
+        '<div class="fg wide" style="align-self:end"><div class="hint" style="text-transform:none;letter-spacing:0">Seattle time; stored as UTC. Used to order same-day sessions by which was actually first.</div></div>'+
+      '</div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><span class="flabel">Modality — procedures per type (1 procedure = 15 min)</span>'+modRows+
+        '<div class="mod-total">Total procedures: <span id="sf-total">0</span></div>'+
+        '<div class="hint">Consults do not count as procedures regardless of counts entered.</div></div>'+
+      '<div class="field-block"><span class="flabel">Time spent per area (auto text — editable)</span>'+
+        '<textarea id="sf-time" placeholder="e.g. 1hr 30 minutes = 6 procedures">'+esc(s.timeSpentText||'')+'</textarea>'+
+        '<button class="btn btn-g btn-sm" id="sf-regen" style="margin-top:6px">Regenerate from counts</button></div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><span class="flabel">Machine</span>'+cbGroup('machines',MACHINES,s.machines)+'</div>'+
+      '<div class="field-block"><span class="flabel">Megahertz</span>'+cbGroup('megahertz',MEGAHERTZ,s.megahertz)+'</div>'+
+      '<div class="frow">'+
+        '<div class="fg wide"><span class="flabel">Filament material</span>'+cbGroup('filamentMaterial',FIL_MAT,s.filamentMaterial)+'</div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg"><span class="flabel">Filament size</span>'+cbGroup('filamentSize',FIL_SIZE,s.filamentSize)+'</div>'+
+        '<div class="fg wide"><span class="flabel">Filament brand</span>'+cbGroup('filamentBrand',FIL_BRAND,s.filamentBrand)+'</div>'+
+      '</div>'+
+      '<div class="field-block"><label for="sf-levels">Levels used (write NA if none)</label><input type="text" id="sf-levels" value="'+esc(s.levelsUsed||'')+'"></div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><span class="flabel">Body areas worked on</span>'+cbGroup('bodyAreas',BODY_AREAS,s.bodyAreas)+'</div>'+
+      '<div class="field-block"><label for="sf-areanote">Body area notes</label><input type="text" id="sf-areanote" value="'+esc(s.bodyAreasNote||'')+'"></div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><label for="sf-s">Subjective</label><textarea id="sf-s" class="autogrow">'+esc(s.subjective||'')+'</textarea></div>'+
+      '<div class="field-block"><label for="sf-o">Objective</label><textarea id="sf-o" class="autogrow">'+esc(s.objective||'')+'</textarea></div>'+
+      '<div class="field-block"><label for="sf-a">Assessment</label><textarea id="sf-a" class="autogrow">'+esc(s.assessment||'')+'</textarea></div>'+
+      '<div class="field-block"><label for="sf-p">Plan</label><textarea id="sf-p" class="autogrow">'+esc(s.plan||'')+'</textarea></div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><label for="sf-notes">My Notes <span class="hint" style="text-transform:none;letter-spacing:0">(private — never submitted to the Google Form)</span></label><textarea id="sf-notes">'+esc(s.myNotes||'')+'</textarea></div>'+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="sf-save">Save Session</button></div>'
+  );
+
+  // Patient section wiring
+  const sfPidGenerate=ov.querySelector('#sf-pid-generate');
+  if(sfPidGenerate) sfPidGenerate.onclick=async()=>{
+    const name=ov.querySelector('#sf-pid-name').value.trim();
+    const salt=ov.querySelector('#sf-pid-salt').value;
+    if(!name){ alert('Enter a patient name to generate an ID.'); return; }
+    const id=await patientIdFromName(name,salt);
+    if(!id) return;
+    pendingPatientId=id; autoFilledPidValue=''; // manually set — disable auto-undo
+    const result=ov.querySelector('#sf-pid-result');
+    result.innerHTML=patientIdSVG(id,40)+'<span class="pid-badge" style="font-size:14px">'+esc(id)+'</span>';
+    result.style.display='flex';
+  };
+  const sfPidRegenBtn=ov.querySelector('#sf-pid-regen-btn');
+  if(sfPidRegenBtn) sfPidRegenBtn.onclick=()=>{ ov.querySelector('#sf-pid-regen-ui').style.display=''; };
+  const sfPidRemoveBtn=ov.querySelector('#sf-pid-remove-btn');
+  if(sfPidRemoveBtn) sfPidRemoveBtn.onclick=async()=>{
+    if(await confirmDialog('Remove patient ID','<p>Remove the patient identifier from this session? This takes effect when you save.</p>','Remove')){
+      pendingPatientId=''; autoFilledPidValue='';
+      ov.querySelector('#sf-pid-current').innerHTML='<span style="color:var(--muted);font-style:italic">Patient ID removed — will be cleared on save.</span>';
+    }
+  };
+
+  // For new sessions: auto-fill patient ID from most recent Self work session with an ID
+  if(!id){
+    ov.querySelector('#sf-type').addEventListener('change', function(){
+      const isSelf=this.value==='Self work';
+      if(isSelf && !pendingPatientId){
+        const prev=S.sessions.filter(s=>s.appointmentType==='Self work'&&s.patientId)
+          .sort((a,b)=>sessionOrder(b).localeCompare(sessionOrder(a)))[0];
+        if(prev&&prev.patientId){
+          pendingPatientId=prev.patientId; autoFilledPidValue=prev.patientId;
+          const result=ov.querySelector('#sf-pid-result');
+          result.innerHTML=patientIdSVG(prev.patientId,40)+
+            '<div><span class="pid-badge" style="font-size:14px">'+esc(prev.patientId)+'</span>'+
+            '<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:3px">Auto-filled from a previous Self work session</div></div>';
+          result.style.display='flex';
+        }
+      } else if(!isSelf && autoFilledPidValue && pendingPatientId===autoFilledPidValue){
+        pendingPatientId=''; autoFilledPidValue='';
+        const result=ov.querySelector('#sf-pid-result');
+        result.innerHTML=''; result.style.display='none';
+      }
+    });
+  }
+
+  const scope=ov.querySelector('#session-form');
+  scope.querySelectorAll('textarea.autogrow').forEach(ta=>{ autoGrow(ta); ta.addEventListener('input',()=>autoGrow(ta)); });
+  const readMods=()=>{ const m={}; MODALITIES.forEach((name,i)=>{ const val=num(ov.querySelector('#mod_'+i).value); if(val>0) m[name]=val; }); return m; };
+  const updateTotal=()=>{ ov.querySelector('#sf-total').textContent=Object.values(readMods()).reduce((a,v)=>a+v,0); };
+  scope.querySelectorAll('[data-modidx]').forEach(inp=>inp.addEventListener('input',updateTotal));
+  updateTotal();
+  ov.querySelector('#sf-regen').onclick=()=>{ ov.querySelector('#sf-time').value=genTimeText(readMods()); };
+  // auto-select default megahertz when a mapped machine is checked
+  scope.querySelectorAll('[data-group="machines"]').forEach(cb=>cb.addEventListener('change',()=>{
+    const mhz=MACHINE_MHZ[cb.value];
+    if(cb.checked && mhz){ const target=scope.querySelector('[data-group="megahertz"][value="'+mhz+'"]'); if(target) target.checked=true; }
+  }));
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+
+  ov.querySelector('#sf-save').onclick=()=>{
+    const date=ov.querySelector('#sf-date').value;
+    if(!date){ alert('Date is required.'); ov.querySelector('#sf-date').focus(); return; }
+    const startTime=pacificToUTC(date,ov.querySelector('#sf-start').value);
+    let endTime=pacificToUTC(date,ov.querySelector('#sf-end').value);
+    if(startTime&&endTime&&endTime<startTime) endTime=pacificToUTC(isoAddDays(date,1),ov.querySelector('#sf-end').value); // end past midnight
+    const rec={
+      id: s.id||uid(),
+      date, startTime, endTime, appointmentType:ov.querySelector('#sf-type').value,
+      technician:ov.querySelector('#sf-tech').value.trim(),
+      soapSubmitted:ov.querySelector('#sf-soap').checked,
+      modalities:readMods(),
+      timeSpentText:ov.querySelector('#sf-time').value,
+      machines:readGroup(scope,'machines'), megahertz:readGroup(scope,'megahertz'),
+      filamentMaterial:readGroup(scope,'filamentMaterial'), filamentSize:readGroup(scope,'filamentSize'),
+      filamentBrand:readGroup(scope,'filamentBrand'),
+      levelsUsed:ov.querySelector('#sf-levels').value,
+      bodyAreas:readGroup(scope,'bodyAreas'), bodyAreasNote:ov.querySelector('#sf-areanote').value,
+      subjective:ov.querySelector('#sf-s').value, objective:ov.querySelector('#sf-o').value,
+      assessment:ov.querySelector('#sf-a').value, plan:ov.querySelector('#sf-p').value,
+      myNotes:ov.querySelector('#sf-notes').value
+    };
+    if(pendingPatientId) rec.patientId=pendingPatientId;
+    if(!rec.timeSpentText) rec.timeSpentText=genTimeText(rec.modalities);
+    if(s.id){ const idx=S.sessions.findIndex(x=>x.id===s.id); S.sessions[idx]=rec; }
+    else S.sessions.push(rec);
+    persist(); closeModal();
+    if(S.view==='sessions') renderSessions();
+    else if(S.view==='day') renderDayView(rec.date);
+    else renderSessionView(rec.id);
+  };
+}
+
+/* ============================ SESSION VIEW ============================ */
+function svItem(k,v,full){ return '<div class="sv-item'+(full?' full':'')+'"><div class="k">'+esc(k)+'</div><div class="v">'+(v?esc(v):DASH)+'</div></div>'; }
+function renderSessionView(id){
+  const s=S.sessions.find(x=>x.id===id); if(!s){ navTo('sessions'); return; }
+  S.view='session'; // pseudo-view (not a nav tab, so K.view isn't persisted) — lets edit-save re-render this page
+  destroyCharts(); // this view bypasses showView, so release any Reports charts here too
+  const v=document.getElementById('view-session');
+  const mods=Object.entries(s.modalities||{}).filter(([,c])=>num(c)>0).map(([k,c])=>k+': '+c).join('\n');
+  v.innerHTML=
+    '<div class="page-title"><span>Session — '+esc(fmtDate(s.date))+'</span>'+
+      '<span class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+        (s.soapSubmitted
+          ? '<span class="pill pill-service" title="SOAP already submitted">SOAP submitted ✓</span>'
+          : '<button class="btn btn-p" id="sv-form">Submit to Google Form ↗</button>')+
+        '<button class="btn btn-g" id="sv-back">← Back</button>'+
+        '<button class="btn btn-g" id="sv-print">Print</button>'+
+        '<button class="btn btn-d" id="sv-del">Delete</button>'+
+        '<button class="btn btn-a" id="sv-edit">Edit</button>'+
+      '</span></div>'+
+    '<div class="panel"><div class="pb"><div class="sv-grid">'+
+      '<div class="sv-item"><div class="k">Date of Service</div><div class="v"><button class="link-btn" id="sv-day">'+esc(fmtDate(s.date))+'</button></div></div>'+
+      (s.patientId?'<div class="sv-item"><div class="k">Patient ID</div><div class="v"><div style="display:flex;align-items:center;gap:8px">'+patientIdSVG(s.patientId,36)+'<span class="pid-badge" style="font-size:14px">'+esc(s.patientId)+'</span></div></div></div>':'')+
+      svItem('Appointment time (Pacific)',fmtTimeRange(s))+
+      svItem('Type of Appointment',s.appointmentType)+
+      svItem('Technician',s.technician)+
+      svItem('Total procedures',String(sessionProcedures(s)))+
+      svItem('Modalities',mods,true)+
+      svItem('Machine(s)',(s.machines||[]).join(', '))+
+      svItem('Megahertz',(s.megahertz||[]).join(', '))+
+      svItem('Filament material',(s.filamentMaterial||[]).join(', '))+
+      svItem('Filament size',(s.filamentSize||[]).join(', '))+
+      svItem('Filament brand',(s.filamentBrand||[]).join(', '))+
+      svItem('Levels used',s.levelsUsed)+
+      svItem('SOAP submitted',s.soapSubmitted?'Yes':'No')+
+      svItem('Body areas',(s.bodyAreas||[]).join(', '),true)+
+      svItem('Body area notes',s.bodyAreasNote,true)+
+      svItem('Time spent per area',s.timeSpentText,true)+
+      svItem('Subjective',s.subjective,true)+
+      svItem('Objective',s.objective,true)+
+      svItem('Assessment',s.assessment,true)+
+      svItem('Plan',s.plan,true)+
+      svItem('My Notes (private)',s.myNotes,true)+
+    '</div></div></div>';
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  v.classList.add('active');
+  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='sessions'));
+  v.querySelector('#sv-day').onclick=()=>navTo('day/'+s.date);
+  v.querySelector('#sv-back').onclick=()=>navTo('sessions');
+  v.querySelector('#sv-print').onclick=()=>window.print();
+  v.querySelector('#sv-edit').onclick=()=>openSessionForm(s.id);
+  const svForm=v.querySelector('#sv-form'); if(svForm) svForm.onclick=()=>openFormLink(s);
+  v.querySelector('#sv-del').onclick=async()=>{
+    if(await confirmDialog('Delete session','<p>Delete this session permanently? This cannot be undone.</p>','Delete')){
+      S.sessions=S.sessions.filter(x=>x.id!==s.id); persist(); navTo('sessions');
+    }
+  };
+}
+
+/* ============================ GOOGLE FORM LINK ============================ */
+function buildFormUrl(s, includeSoap){
+  const p=[];
+  const add=(id,val)=>{ if(val!=null && val!=='') p.push('entry.'+id+'='+encodeURIComponent(val)); };
+  const addMulti=(id,arr)=>{ (arr||[]).forEach(v=>p.push('entry.'+id+'='+encodeURIComponent(v))); };
+  if(s.date){ const {y,m,d}=isoToParts(s.date); p.push('entry.'+ENTRY.date+'_year='+y,'entry.'+ENTRY.date+'_month='+m,'entry.'+ENTRY.date+'_day='+d); }
+  add(ENTRY.apptType,apptFormValue(s.appointmentType));
+  add(ENTRY.technician,s.technician);
+  if(includeSoap){ add(ENTRY.subjective,s.subjective); add(ENTRY.objective,s.objective); add(ENTRY.assessment,s.assessment); add(ENTRY.plan,s.plan); }
+  addMulti(ENTRY.modality, Object.keys(s.modalities||{}).filter(k=>num(s.modalities[k])>0).map(modFormValue));
+  addMulti(ENTRY.machine,s.machines); addMulti(ENTRY.megahertz,s.megahertz);
+  addMulti(ENTRY.filMaterial,s.filamentMaterial); addMulti(ENTRY.filSize,s.filamentSize); addMulti(ENTRY.filBrand,s.filamentBrand);
+  add(ENTRY.levels,s.levelsUsed); add(ENTRY.timeSpent,s.timeSpentText);
+  if(S.settings.soapEmail) p.unshift('emailAddress='+encodeURIComponent(S.settings.soapEmail));
+  const base='https://docs.google.com/forms/d/e/'+(S.settings.formId||DEFAULT_FORM_ID)+'/viewform';
+  return base+'?usp=pp_url&'+p.join('&');
+}
+async function openFormLink(s){
+  const full=buildFormUrl(s,true);
+  if(full.length<=8000){ window.open(full,'_blank'); return; }
+  const ok=await confirmDialog('Link too long to fully prefill',
+    '<p>This session’s <b>Subjective, Objective, Assessment, and Plan</b> are too long to fit in a prefill link.</p>'+
+    '<p style="margin-top:10px">The form will open prefilled with everything else. You’ll need to <b>copy those four fields into the form manually</b>.</p>',
+    'Open form anyway');
+  if(ok) window.open(buildFormUrl(s,false),'_blank');
+}
+
+/* ============================ CALENDAR ============================ */
+function calKey(y,m,d){ return y+'-'+pad2(m)+'-'+pad2(d); }
+function dayType(iso, dow, entry){
+  const sh=num(entry&&entry.servedHours), ph=num(entry&&entry.plannedHours);
+  const served=sh>0, planned=ph>0;
+  const status=(entry&&entry.status)||'default';
+  if(served&&planned&&sh<ph) return 'partial';
+  if(served) return 'completed';
+  if(planned) return 'planned';
+  if(status==='school-out') return 'out';
+  if(status==='school-in') return 'in';
+  return (dow===0||dow===6)?'weekend':'school';
+}
+function proceduresOnDate(iso){ return S.sessions.filter(s=>s.date===iso).reduce((a,s)=>a+sessionProcedures(s),0); }
+function soapNeededOnDate(iso){ return S.sessions.some(s=>s.date===iso && !s.soapSubmitted && !futureSession(s)); }
+
+function renderCalendar(){
+  const v=document.getElementById('view-calendar');
+  if(!S.calMonth){
+    const st=S.settings.schoolStartDate?isoToParts(S.settings.schoolStartDate):isoToParts(todayISO());
+    const now=new Date();
+    S.calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startM = new Date(st.y, st.m-1, 1);
+    if(S.calMonth<startM) S.calMonth=startM;
+  }
+  const y=S.calMonth.getFullYear(), m=S.calMonth.getMonth(); // m 0-based
+  const first=new Date(y,m,1), startDow=first.getDay(), daysIn=new Date(y,m+1,0).getDate();
+  const title=first.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const stParts=S.settings.schoolStartDate?isoToParts(S.settings.schoolStartDate):null;
+  const atStart = stParts && (y<stParts.y || (y===stParts.y && m<=stParts.m-1));
+
+  const today=todayISO();
+  let cells='';
+  for(let i=0;i<startDow;i++) cells+='<div class="cal-cell out"></div>';
+  for(let d=1;d<=daysIn;d++){
+    const iso=calKey(y,m+1,d), dow=new Date(y,m,d).getDay(), entry=S.calendar[iso]||null;
+    const dt=dayType(iso,dow,entry);
+    const proc=proceduresOnDate(iso);
+    const planned=num(entry&&entry.plannedHours), served=num(entry&&entry.servedHours);
+    let badges='';
+    if(planned) badges+='<div class="cbadge">Plan: <b>'+planned+'h</b></div>';
+    if(served) badges+='<div class="cbadge">Served: <b>'+served+'h</b>'+(dt==='partial'?'<span class="cwarn" title="Served hours below plan">⚠</span>':'')+'</div>';
+    cells+='<div class="cal-cell dt-'+dt+(iso===today?' today':'')+'" data-day="'+iso+'"'+(entry&&entry.note?' data-note="'+esc(entry.note)+'"':'')+'>'+
+      '<div class="cal-daynum-row"><div class="cal-daynum">'+d+'</div>'+
+      (soapNeededOnDate(iso)?'<div class="csoap" title="SOAP note needed">🧼</div>':'')+
+      '</div>'+
+      '<button class="cal-edit-btn no-print" data-edit-day="'+iso+'" title="Edit day">✏</button>'+
+      (entry&&entry.note?'<div class="cnote" title="'+esc(entry.note)+'"></div>':'')+
+      '<div class="cal-badges">'+(proc>0?'<span class="cproc">'+proc+' proc</span>':'')+badges+'</div>'+
+    '</div>';
+  }
+
+  v.innerHTML=
+    '<div class="page-title">Calendar</div>'+
+    '<div class="panel"><div class="pb">'+
+      '<div class="cal-head">'+
+        '<div class="cal-nav"><button class="btn btn-g" id="cal-prev"'+(atStart?' disabled':'')+'>← Prev</button>'+
+          '<button class="btn btn-g" id="cal-today">Today</button>'+
+          '<button class="btn btn-g" id="cal-next">Next →</button></div>'+
+        '<div class="cal-title">'+esc(title)+'</div>'+
+      '</div>'+
+      '<div class="cal-grid">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>'<div class="cal-dow">'+d+'</div>').join('')+cells+'</div>'+
+      '<div class="cal-legend">'+
+        '<span class="leg"><span class="sw dt-school"></span>School day (M–F)</span>'+
+        '<span class="leg"><span class="sw dt-weekend"></span>Non-school / weekend</span>'+
+        '<span class="leg"><span class="sw dt-planned"></span>Planned — needs served hours</span>'+
+        '<span class="leg"><span class="sw dt-completed"></span>Completed (served)</span>'+
+        '<span class="leg"><span class="sw dt-in"></span>School in (override)</span>'+
+        '<span class="leg"><span class="sw dt-out"></span>School out (override)</span>'+
+        '<span class="leg"><span class="csoap">🧼</span>SOAP note needed</span>'+
+      '</div>'+
+    '</div></div>';
+
+  v.querySelector('#cal-prev').onclick=()=>{ if(atStart)return; S.calMonth=new Date(y,m-1,1); renderCalendar(); };
+  v.querySelector('#cal-next').onclick=()=>{ S.calMonth=new Date(y,m+1,1); renderCalendar(); };
+  v.querySelector('#cal-today').onclick=()=>{ const n=new Date(); S.calMonth=new Date(n.getFullYear(),n.getMonth(),1); renderCalendar(); };
+  v.querySelectorAll('[data-day]').forEach(c=>c.onclick=()=>navTo('day/'+c.dataset.day));
+  v.querySelectorAll('[data-edit-day]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); openDayForm(b.dataset.editDay); });
+  const grid=v.querySelector('.cal-grid');
+  grid.addEventListener('mousemove',e=>{
+    const cell=e.target.closest('[data-note]');
+    const t=legendTip();
+    if(cell){ t.textContent=cell.dataset.note; t.style.left=(e.clientX+14)+'px'; t.style.top=(e.clientY+14)+'px'; t.style.display='block'; }
+    else t.style.display='none';
+  });
+  grid.addEventListener('mouseleave',()=>legendTip().style.display='none');
+}
+
+function openDayForm(iso){
+  const e=S.calendar[iso]||{plannedHours:'',servedHours:'',status:'default',note:''};
+  const daySessions=S.sessions.filter(s=>s.date===iso);
+  const sessList = daySessions.length
+    ? '<div class="field-block"><span class="flabel">Sessions this day ('+proceduresOnDate(iso)+' procedures)</span>'+
+        daySessions.map(s=>{
+          const mods=Object.entries(s.modalities||{}).filter(([,c])=>num(c)>0).map(([k,c])=>esc(shortMod(k))+' ('+c+')').join(', ');
+          return '<div class="mod-row"><span style="flex:1">'+apptPill(s.appointmentType)+' '+(mods||DASH)+' · '+sessionProcedures(s)+' proc'+(s.soapSubmitted?' · <span class="tick">SOAP ✓</span>':'')+'</span><button class="btn btn-a btn-sm" data-sess="'+s.id+'">View</button></div>';
+        }).join('')+'</div>'
+    : '<div class="hint">No sessions logged this day. Add them on the Sessions tab.</div>';
+  const ov=openModal(
+    '<div class="modal-head">'+esc(fmtDate(iso))+'<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body">'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="d-plan">Planned hours</label><input type="number" min="0" step="0.25" id="d-plan" value="'+esc(e.plannedHours)+'"></div>'+
+        '<div class="fg"><label for="d-serv">Served hours</label><input type="number" min="0" step="0.25" id="d-serv" value="'+esc(e.servedHours)+'"></div>'+
+        '<div class="fg wide"><label for="d-status">School status</label><select id="d-status">'+
+          [['default','Default (M–F = school)'],['school-in','School in (open)'],['school-out','School out (closed)']].map(([val,lbl])=>'<option value="'+val+'"'+(e.status===val?' selected':'')+'>'+lbl+'</option>').join('')+
+        '</select></div>'+
+      '</div>'+
+      '<div class="field-block"><label for="d-note">Note</label><textarea id="d-note" placeholder="Events, holidays, notes…">'+esc(e.note||'')+'</textarea></div>'+
+      '<hr class="section-sep">'+sessList+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-d" id="d-clear">Clear day</button><span style="flex:1"></span><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="d-save">Save</button></div>'
+  );
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelectorAll('[data-sess]').forEach(b=>b.onclick=()=>{ closeModal(); navTo('session/'+b.dataset.sess); });
+  ov.querySelector('#d-clear').onclick=()=>{ delete S.calendar[iso]; persist(); closeModal(); if(S.view==='day') navTo('day/'+iso); else renderCalendar(); };
+  ov.querySelector('#d-save').onclick=()=>{
+    const rec={ plannedHours:num(ov.querySelector('#d-plan').value)||'', servedHours:num(ov.querySelector('#d-serv').value)||'',
+      status:ov.querySelector('#d-status').value, note:ov.querySelector('#d-note').value.trim() };
+    if(!rec.plannedHours && !rec.servedHours && rec.status==='default' && !rec.note) delete S.calendar[iso];
+    else S.calendar[iso]=rec;
+    persist(); closeModal(); if(S.view==='day') navTo('day/'+iso); else renderCalendar();
+  };
+}
+
+/* ============================ DAY DETAIL ============================ */
+function prevSchoolDay(iso){
+  let cur=iso;
+  for(let i=0;i<90;i++){
+    cur=isoAddDays(cur,-1);
+    const {y,m,d}=isoToParts(cur);
+    const dow=new Date(y,m-1,d).getDay();
+    const dt=dayType(cur,dow,S.calendar[cur]||null);
+    if(dt!=='weekend'&&dt!=='out') return cur;
+  }
+  return null;
+}
+function nextSchoolDay(iso){
+  let cur=iso;
+  for(let i=0;i<90;i++){
+    cur=isoAddDays(cur,1);
+    const {y,m,d}=isoToParts(cur);
+    const dow=new Date(y,m-1,d).getDay();
+    const dt=dayType(cur,dow,S.calendar[cur]||null);
+    if(dt!=='weekend'&&dt!=='out') return cur;
+  }
+  return null;
+}
+function buildMiniCalendar(selectedISO, viewISO){
+  if(!viewISO) viewISO=selectedISO;
+  const {y,m}=isoToParts(viewISO);
+  const first=new Date(y,m-1,1);
+  const startDow=first.getDay();
+  const daysIn=new Date(y,m,0).getDate();
+  const title=first.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const dows=['S','M','T','W','T','F','S'].map(x=>'<div class="mini-cal-dow">'+x+'</div>').join('');
+  let cells='';
+  for(let i=0;i<startDow;i++) cells+='<div class="mini-cal-cell mc-out">&nbsp;</div>';
+  for(let day=1;day<=daysIn;day++){
+    const dISO=calKey(y,m,day);
+    const dow=new Date(y,m-1,day).getDay();
+    const dt=dayType(dISO,dow,S.calendar[dISO]||null);
+    const cls=['mini-cal-cell',
+      (dt==='completed'||dt==='partial')?'mc-green':dt==='planned'?'mc-yellow':'',
+      dt==='weekend'?'mc-weekend':'',
+      dISO===selectedISO?'mc-selected':''
+    ].filter(Boolean).join(' ');
+    cells+='<div class="'+cls+'" data-goto="'+dISO+'">'+day+'</div>';
+  }
+  const trailing=42-(startDow+daysIn);
+  for(let i=0;i<trailing;i++) cells+='<div class="mini-cal-cell mc-out">&nbsp;</div>';
+  const prevDate=new Date(y,m-2,1);
+  const prevY=prevDate.getFullYear(), prevM=prevDate.getMonth()+1;
+  const stParts=S.settings.schoolStartDate?isoToParts(S.settings.schoolStartDate):null;
+  const atStart=stParts&&(y<stParts.y||(y===stParts.y&&m<=stParts.m));
+  const nextDate=new Date(y,m,1);
+  const nextY=nextDate.getFullYear(), nextM=nextDate.getMonth()+1;
+  return '<div class="mini-cal panel">'+
+    '<div class="ph" style="display:flex;align-items:center;gap:4px">'+
+      (atStart?'<span style="min-width:28px"></span>':'<button class="btn btn-g btn-sm" data-minical-to="'+calKey(prevY,prevM,1)+'" title="Previous month">←</button>')+
+      '<span style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--primary-dk)">'+esc(title)+'</span>'+
+      '<button class="btn btn-g btn-sm" data-minical-to="'+calKey(nextY,nextM,1)+'" title="Next month">→</button>'+
+    '</div>'+
+    '<div class="pb"><div class="mini-cal-grid">'+dows+cells+'</div></div></div>';
+}
+function renderDayView(iso){
+  if(!iso||!/^\d{4}-\d{2}-\d{2}$/.test(iso)){ navTo('calendar'); return; }
+  const {y,m,d}=isoToParts(iso);
+  const dow=new Date(y,m-1,d).getDay();
+  const entry=S.calendar[iso]||{};
+  S.view='day';
+  destroyCharts();
+  const daySessions=S.sessions.filter(s=>s.date===iso).sort((a,b)=>sessionOrder(a).localeCompare(sessionOrder(b)));
+  const prevISO=prevSchoolDay(iso);
+  const nextISO=nextSchoolDay(iso);
+  const ph=num(entry.plannedHours), sh=num(entry.servedHours);
+  const statusLabel={'default':'Default','school-in':'School in (override)','school-out':'School out (override)'}[entry.status||'default']||entry.status;
+  const summaryHtml=
+    '<div class="dv-summary">'+
+    '<div class="panel"><div class="ph">Day Summary '+
+      '<span class="no-print"><button class="btn btn-g btn-sm" id="dv-edit">Edit Day</button></span>'+
+    '</div><div class="pb"><div class="sv-grid">'+
+      '<div class="sv-item"><div class="k">Planned hours</div><div class="v">'+(ph?fmtHrs(ph):DASH)+'</div></div>'+
+      '<div class="sv-item"><div class="k">Served hours</div><div class="v">'+(sh?fmtHrs(sh):DASH)+'</div></div>'+
+      '<div class="sv-item"><div class="k">Status</div><div class="v">'+esc(statusLabel)+'</div></div>'+
+      '<div class="sv-item"><div class="k">Sessions</div><div class="v">'+daySessions.length+'</div></div>'+
+      (entry.note?'<div class="sv-item full"><div class="k">Note</div><div class="v">'+esc(entry.note)+'</div></div>':'')+
+    '</div></div></div></div>';
+  const sessCardsHtml=daySessions.length===0
+    ? '<div class="empty">No sessions logged for this day.</div>'
+    : daySessions.map(s=>{
+        const mods=Object.entries(s.modalities||{}).filter(([,c])=>num(c)>0).map(([k,c])=>esc(shortMod(k))+' ×'+c).join(', ');
+        const areas=(s.bodyAreas||[]).slice(0,6).join(', ')+(s.bodyAreas&&s.bodyAreas.length>6?' …':'');
+        const timeRange=fmtTimeRange(s);
+        const machines=(s.machines||[]).join(', ');
+        const mhz=(s.megahertz||[]).join(', ');
+        const filMat=(s.filamentMaterial||[]).join(', ');
+        const filSize=(s.filamentSize||[]).join(', ');
+        const filBrand=(s.filamentBrand||[]).join(', ');
+        const filParts=[filMat,filSize&&'sz '+filSize,filBrand].filter(Boolean).join(' · ');
+        return '<div class="dv-sess-card">'+
+          '<div class="dv-sess-meta">'+
+            apptPill(s.appointmentType)+
+            (timeRange?'<span style="font-size:12px;color:var(--muted)">'+esc(timeRange)+'</span>':'')+
+            (s.technician?'<span style="font-size:12px;color:var(--muted)">'+esc(s.technician)+'</span>':'')+
+            (s.soapSubmitted?'<span class="pill pill-service">SOAP ✓</span>':'<span class="soap-flag" title="SOAP not submitted">!</span>')+
+          '</div>'+
+          '<div class="dv-sess-detail">'+
+            (mods?'<div>'+mods+'</div>':'')+
+            (machines?'<div>Machine: '+esc(machines)+(mhz?' · '+esc(mhz)+'MHz':'')+'</div>':'')+
+            (filParts?'<div>Filament: '+esc(filParts)+'</div>':'')+
+            (s.levelsUsed?'<div>Levels: '+esc(s.levelsUsed)+'</div>':'')+
+            (areas?'<div>Areas: '+esc(areas)+'</div>':'')+
+            (s.myNotes?'<div>Note: '+esc(s.myNotes)+'</div>':'')+
+          '</div>'+
+          '<div style="margin-top:8px"><button class="btn btn-a btn-sm" data-sess="'+s.id+'">View session</button>'+
+          ' <button class="btn btn-g btn-sm" data-edit-sess="'+s.id+'">Edit</button></div>'+
+        '</div>';
+      }).join('');
+  const v=document.getElementById('view-day');
+  v.innerHTML=
+    '<div class="page-title"><span>'+esc(fmtDate(iso))+'</span>'+
+      '<span class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+        '<button class="btn btn-g" id="dv-back">← Calendar</button>'+
+        '<button class="btn btn-g" id="dv-prev"'+(prevISO?'':' disabled')+'>← Prev</button>'+
+        '<button class="btn btn-g" id="dv-next"'+(nextISO?'':' disabled')+'>Next →</button>'+
+        '<button class="btn btn-p" id="dv-new-sess">+ New Session</button>'+
+      '</span>'+
+    '</div>'+
+    '<div class="dv-top">'+summaryHtml+buildMiniCalendar(iso)+'</div>'+
+    '<div class="panel"><div class="ph">Sessions ('+daySessions.length+')</div>'+
+    '<div class="pb">'+sessCardsHtml+'</div></div>';
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  v.classList.add('active');
+  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='calendar'));
+  v.querySelector('#dv-back').onclick=()=>navTo('calendar');
+  v.querySelector('#dv-edit').onclick=()=>openDayForm(iso);
+  v.querySelector('#dv-new-sess').onclick=()=>openSessionForm(null,iso);
+  if(prevISO) v.querySelector('#dv-prev').onclick=()=>navTo('day/'+prevISO);
+  if(nextISO) v.querySelector('#dv-next').onclick=()=>navTo('day/'+nextISO);
+  v.querySelectorAll('[data-sess]').forEach(b=>b.onclick=()=>navTo('session/'+b.dataset.sess));
+  v.querySelectorAll('[data-edit-sess]').forEach(b=>b.onclick=()=>openSessionForm(b.dataset.editSess));
+  v.addEventListener('click', e=>{
+    const mc=e.target.closest('[data-minical-to]');
+    if(mc){ e.stopPropagation(); const el=v.querySelector('.mini-cal'); el.outerHTML=buildMiniCalendar(iso,mc.dataset.minicalTo); return; }
+    const gt=e.target.closest('[data-goto]');
+    if(gt){ navTo('day/'+gt.dataset.goto); }
+  });
+}
+
+/* ============================ REPORTS ============================ */
+// "future" = not yet finished: before the session's end time, or (no end time) dated after today
+function futureSession(s){
+  if(s.endTime) return Date.now() < new Date(s.endTime).getTime();
+  return (s.date||'') > todayISO();
+}
+// stats/reports only: drops consults AND future sessions (not yet happened)
+function nonConsult(){ return S.sessions.filter(s=>s.appointmentType!=='Consult' && !futureSession(s)); }
+function modalityTotals(){
+  const t={}; MODALITIES.forEach(m=>t[m]=0);
+  nonConsult().forEach(s=>Object.entries(s.modalities||{}).forEach(([k,v])=>{ if(t[k]!=null) t[k]+=num(v); }));
+  return t;
+}
+function procMap(field){
+  const map={};
+  nonConsult().forEach(s=>{ const p=sessionProcedures(s);
+    (s[field]||[]).forEach(v=>{ map[v]=(map[v]||0)+p; }); });
+  return map;
+}
+
+function renderReports(){
+  const v=document.getElementById('view-reports');
+  const req=S.settings.requirements, unt=S.settings.untracked, total=num(S.settings.totalProcedures)||400;
+  const obs=num(S.settings.observationProcedures)||0;
+  const mt=modalityTotals();
+  const sessionDone=nonConsult().reduce((a,s)=>a+sessionProcedures(s),0);
+  const untrackedTotal=num(unt.galvanic)+num(unt.flashThermolysis)+num(unt.manualThermolysis)+num(unt.blend)+num(unt.studentChoice);
+  const proceduresDone=sessionDone+obs+untrackedTotal; // observation + untracked backfill count but aren't logged as sessions
+
+  // per-category: tracked = logged sessions; done = tracked + untracked backfill
+  let catTrackedSum=0, reqSum=0, scTrackedOverflow=0, scUntrackedOverflow=0;
+  const catRows=Object.entries(REQ_MAP).map(([key,info])=>{
+    const tracked=info.mods.reduce((a,m)=>a+(mt[m]||0),0);
+    const done=tracked+num(unt[key]);
+    const r=num(req[key]); reqSum+=r; catTrackedSum+=tracked;
+    scTrackedOverflow+=Math.max(0,tracked-r);
+    scUntrackedOverflow+=Math.max(0,done-r)-Math.max(0,tracked-r);
+    const remaining=Math.max(0,r-done);
+    return '<tr><td>'+esc(info.label)+'</td><td>'+r+'</td><td>'+tracked+'</td><td>'+done+'</td><td'+(remaining===0?' class="tick"':'')+'>'+(remaining===0?'✓':remaining)+'</td></tr>';
+  }).join('');
+  const nonCatTracked=Math.max(0,sessionDone-catTrackedSum); // logged modalities outside requirement categories (e.g. insertion practice)
+  const scReq=Math.max(0,total-reqSum-obs); // observation carved out of the student-choice remainder
+  const scTracked=nonCatTracked+scTrackedOverflow; // logged procedures that fulfil student choice
+  const scDone=scTracked+num(unt.studentChoice)+scUntrackedOverflow; // observation excluded from student choice
+  const scRem=Math.max(0,scReq-scDone);
+  const grandRem=Math.max(0,total-proceduresDone);
+
+  // pace
+  const t0=todayISO();
+  const remDays=Object.entries(S.calendar).filter(([iso,e])=>iso>=t0 && num(e.plannedHours)>0 && !(num(e.servedHours)>0));
+  const remSchoolDays=remDays.length;
+  const remPlannedHours=remDays.reduce((a,[,e])=>a+num(e.plannedHours),0);
+  const lastRemIso=remDays.map(([iso])=>iso).sort().pop();
+  const totalDaysRemaining=lastRemIso?Math.round((new Date(lastRemIso+'T00:00:00Z')-new Date(t0+'T00:00:00Z'))/86400000)+1:0;
+  const perDay= remSchoolDays>0 ? (grandRem/remSchoolDays).toFixed(2) : '—';
+
+  // estimated school hours performed to date: logged served hours, or planned hours for past days not yet logged
+  let estPerformedHours=0;
+  Object.entries(S.calendar).forEach(([iso,e])=>{
+    const served=num(e.servedHours), planned=num(e.plannedHours);
+    if(served>0) estPerformedHours+=served;
+    else if(planned>0 && iso<t0) estPerformedHours+=planned;
+  });
+  const estHrsStr=fmtHrs(estPerformedHours);
+  // planning gap: performed/served + future planned hours vs. the school-hours goal
+  const hoursNeeded=num(S.settings.schoolHoursNeeded)||0;
+  const hoursCommitted=estPerformedHours+remPlannedHours;
+  const hoursToPlan=hoursNeeded>0?Math.max(0,+(hoursNeeded-hoursCommitted).toFixed(2)):0;
+  const hrsPerDay=(remSchoolDays>0&&hoursNeeded>0)?+((hoursNeeded-estPerformedHours)/remSchoolDays).toFixed(1):null;
+
+  // outstanding tracking: past planned days missing served hours, and sessions missing SOAP
+  const hourDays=Object.keys(S.calendar).filter(iso=>iso<t0 && num(S.calendar[iso].plannedHours)>0 && !(num(S.calendar[iso].servedHours)>0)).sort();
+  const soapNeeded=S.sessions.filter(s=>!s.soapSubmitted && !futureSession(s)).length;
+
+  // assignments remaining: not yet submitted, earliest due date first
+  const assignmentsRemaining=S.assignments.filter(a=>!a.submitted).sort((a,b)=>(a.dueDate||'9999')<(b.dueDate||'9999')?-1:1);
+  const nextDueAssignment=assignmentsRemaining.find(a=>a.dueDate);
+
+  v.innerHTML=
+    '<div class="page-title">Reports</div>'+
+    '<div class="dgrid">'+
+      dcard('Procedures done',proceduresDone+' / '+total, (obs>0||untrackedTotal>0)?('includes '+obs+' observation'+(untrackedTotal>0?' + '+untrackedTotal+' backfilled':'')+' (untracked)'):'')+
+      dcard('Procedures remaining',String(grandRem))+
+      dcard('School days remaining',String(remSchoolDays)+(totalDaysRemaining>remSchoolDays?' ('+totalDaysRemaining+' days total)':''),(remSchoolDays===0?'no planned-unserved days':fmtHrs(remPlannedHours)+' planned')+' · ~'+estHrsStr+' performed',false,hrsPerDay!==null?'~'+hrsPerDay+'h/day needed to reach '+fmtHrs(hoursNeeded):(hoursNeeded>0?'no remaining school days planned':''),hrsPerDay!==null&&hrsPerDay>8)+
+      dcard('Procedures needed per school day',perDay, (perDay==='—'?'no planned-unserved days':'≈ '+fmtDur(Math.round(num(perDay)*15))+'/day to finish on schedule'), remSchoolDays>0&&grandRem>remSchoolDays)+
+      dcard('Assignments remaining',String(assignmentsRemaining.length), assignmentsRemaining.length?(nextDueAssignment?'next due '+fmtDate(nextDueAssignment.dueDate)+' — '+nextDueAssignment.title:'none with a due date set'):'all caught up', false,undefined,undefined,'dcard-assignments')+
+    '</div>'+
+    '<div class="panel"><div class="ph">Outstanding Tracking</div><div class="pb">'+
+      ((hourDays.length||soapNeeded||hoursToPlan>0)
+        ? (hoursToPlan>0
+            ? '<div class="ot-row"><div class="ot-msg"><div class="ot-title">Plan more school hours</div>'+
+              '<div class="ot-sub"><b>'+hoursToPlan+' more hours need to be planned</b> to reach '+fmtHrs(hoursNeeded)+' · '+fmtHrs(hoursCommitted)+' planned + performed</div></div>'+
+              '<button class="btn btn-a btn-sm" id="ot-plan">Open calendar →</button></div>'
+            : '')+
+          (hourDays.length
+            ? '<div class="ot-row"><div class="ot-msg"><div class="ot-title">Enter in school hours</div>'+
+              '<div class="ot-sub"><b>'+hourDays.length+'</b> past school day'+(hourDays.length>1?'s':'')+' missing served hours · earliest '+esc(fmtDate(hourDays[0]))+'</div></div>'+
+              '<button class="btn btn-a btn-sm" id="ot-hours">Open '+esc(monthLabel(hourDays[0]))+' →</button></div>'
+            : '')+
+          (soapNeeded
+            ? '<div class="ot-row"><div class="ot-msg"><div class="ot-title">Submit SOAP notes</div>'+
+              '<div class="ot-sub"><b>'+soapNeeded+'</b> session'+(soapNeeded>1?'s':'')+' need SOAP notes submitted</div></div>'+
+              '<button class="btn btn-a btn-sm" id="ot-soap">View sessions →</button></div>'
+            : '')
+        : '<div class="ot-clear">✓ You’re all caught up on hours and SOAP notes.</div>')+
+    '</div></div>'+
+    '<div class="panel"><div class="ph">Procedures remaining by type</div><div class="pb"><div class="tbl-wrap"><table class="tbl tbl-num">'+
+      '<thead><tr><th>Type</th><th>Required</th><th>Tracked</th><th>Done</th><th>Remaining</th></tr></thead><tbody>'+
+      catRows+
+      (obs>0?'<tr><td>Observation</td><td>'+obs+'</td><td>0</td><td>'+obs+'</td><td class="tick">✓</td></tr>':'')+
+      '<tr><td>Student choice</td><td>'+scReq+'</td><td>'+scTracked+'</td><td>'+scDone+'</td><td'+(scRem===0?' class="tick"':'')+'>'+(scRem===0?'✓':scRem)+'</td></tr>'+
+      '<tr class="total-row"><td>Total</td><td>'+total+'</td><td>'+sessionDone+'</td><td>'+proceduresDone+'</td><td>'+grandRem+'</td></tr>'+
+      '</tbody></table></div><div class="hint" style="margin-top:8px">Galvanic combines SN + MN. “Tracked” counts only logged sessions; “Done” adds untracked backfill + observation. Observation procedures aren’t logged as sessions (always complete). “Student choice” = total − required specifics − observation; consults excluded from all counts.</div></div></div>'+
+    '<div class="panel"><div class="ph">Progress over time'+
+      '<div class="prop-toggle" id="prog-toggle">'+
+        '<button data-mode="proc"'+(S.progMode==='proc'?' class="on"':'')+'>Procedures</button>'+
+        '<button data-mode="hours"'+(S.progMode==='hours'?' class="on"':'')+'>School Hours</button>'+
+      '</div></div><div class="pb"><div class="chart-wrap"><canvas id="c-progress"></canvas></div></div></div>'+
+    '<div class="panel"><div class="ph">Proportions'+
+      '<div class="prop-toggle" id="prop-toggle">'+
+        '<button data-mode="proc"'+(S.propMode==='proc'?' class="on"':'')+'>By procedure</button>'+
+        '<button data-mode="sess"'+(S.propMode==='sess'?' class="on"':'')+'>By session</button>'+
+      '</div></div><div class="pb"><div class="chart-grid" id="prop-grid">'+propGridHTML()+'</div></div></div>'+
+    '<div class="panel"><div class="ph">Body Parts Worked</div><div class="pb"><div class="chart-wrap" style="height:420px"><canvas id="c-bodyparts"></canvas></div></div></div>';
+
+  // destroy previous
+  destroyCharts();
+  drawProgress();
+  Object.keys(PROP_CHARTS).forEach(drawProp);
+  drawBar('c-bodyparts', sessMap('bodyAreas'));
+  const otP=v.querySelector('#ot-plan'); if(otP) otP.onclick=()=>{ const now=new Date(); S.calMonth=new Date(now.getFullYear(),now.getMonth(),1); navTo('calendar'); };
+  const otH=v.querySelector('#ot-hours'); if(otH) otH.onclick=()=>{ const {y,m}=isoToParts(hourDays[0]); S.calMonth=new Date(y,m-1,1); navTo('calendar'); };
+  const otS=v.querySelector('#ot-soap'); if(otS) otS.onclick=()=>{ S.sessionFilter=Object.assign(emptyFilter(),{soap:'no'}); navTo('sessions'); };
+  const daCard=v.querySelector('#dcard-assignments'); if(daCard) daCard.onclick=()=>{ S.assignmentFilter=Object.assign(emptyAssignmentFilter(),{submitted:'no'}); navTo('assignments'); };
+  v.querySelectorAll('#prop-toggle button').forEach(b=>b.onclick=()=>{
+    const mode=b.getAttribute('data-mode');
+    if(S.propMode===mode) return;
+    S.propMode=mode;
+    b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    // rebuild only the proportions grid (fresh canvases handle the empty-chart case); leave the progress chart alone
+    Object.keys(PROP_CHARTS).forEach(id=>{ if(S.charts[id]){ try{S.charts[id].destroy();}catch(e){} delete S.charts[id]; } });
+    const grid=v.querySelector('#prop-grid'); if(grid) grid.innerHTML=propGridHTML();
+    Object.keys(PROP_CHARTS).forEach(drawProp);
+  });
+  v.querySelectorAll('#prog-toggle button').forEach(b=>b.onclick=()=>{
+    const mode=b.getAttribute('data-mode');
+    if(S.progMode===mode) return;
+    S.progMode=mode;
+    b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    if(S.charts.progress){ try{S.charts.progress.destroy();}catch(e){} delete S.charts.progress; }
+    const wrap=v.querySelector('#c-progress'); if(wrap){ const c=document.createElement('canvas'); c.id='c-progress'; wrap.parentElement.replaceChild(c,wrap); }
+    drawProgress();
+  });
+}
+function propGridHTML(){
+  return chartBox('Appointment type','c-appt')+
+    chartBox('Modalities','c-mod')+
+    chartBox('Machines','c-mach')+
+    chartBox('Filaments — material','c-fil-mat')+
+    chartBox('Filaments — brand','c-fil-brand')+
+    chartBox('Filaments — size','c-fil-size');
+}
+function dcard(lbl,val,sub,warn,sub2,warn2,id){ return '<div class="dcard'+(id?' dcard-link':'')+'"'+(id?' id="'+id+'"':'')+'><div class="dcard-lbl">'+esc(lbl)+'</div><div class="dcard-val'+(warn?' warn':'')+'">'+esc(val)+'</div>'+(sub?'<div class="dcard-sub">'+esc(sub)+'</div>':'')+(sub2?'<div class="dcard-sub'+(warn2?' warn':'')+'">'+esc(sub2)+'</div>':'')+'</div>'; }
+function chartBox(title,id){ return '<div class="chart-box"><div class="chart-title">'+esc(title)+'</div><div class="chart-wrap"><canvas id="'+id+'"></canvas></div></div>'; }
+// per-proportion-chart data builders for each mode; 'proc' weights by procedure count, 'sess' counts sessions
+const PROP_CHARTS={
+  'c-appt':     { proc:()=>apptProcedures(),                     sess:()=>apptSessions() },
+  'c-mod':      { proc:()=>modalityTotals(),                     sess:()=>modalitySessions(), colorer:lbl=>modFill(lbl) },
+  'c-mach':     { proc:()=>procMap('machines'),                  sess:()=>sessMap('machines') },
+  'c-fil-mat':  { proc:()=>shortMat(procMap('filamentMaterial')),sess:()=>shortMat(sessMap('filamentMaterial')) },
+  'c-fil-brand':{ proc:()=>procMap('filamentBrand'),             sess:()=>sessMap('filamentBrand') },
+  'c-fil-size': { proc:()=>procMap('filamentSize'),              sess:()=>sessMap('filamentSize') }
+};
+function drawProp(id){
+  const cfg=PROP_CHARTS[id]; if(!cfg) return;
+  const mode=S.propMode||'proc';
+  drawDoughnut(id, mode==='proc'?cfg.proc():cfg.sess(), cfg.colorer, mode==='proc'?'procedure':'session');
+}
+function apptProcedures(){ const m={}; nonConsult().forEach(s=>{ const t=s.appointmentType||'Unspecified'; m[t]=(m[t]||0)+sessionProcedures(s); }); return m; }
+function apptSessions(){ const m={}; S.sessions.filter(s=>!futureSession(s)).forEach(s=>{ const t=s.appointmentType||'Unspecified'; m[t]=(m[t]||0)+1; }); return m; }
+function sessMap(field){ const map={}; nonConsult().forEach(s=>(s[field]||[]).forEach(v=>{ map[v]=(map[v]||0)+1; })); return map; }
+function modalitySessions(){ const t={}; nonConsult().forEach(s=>Object.entries(s.modalities||{}).forEach(([k,v])=>{ if(num(v)>0) t[k]=(t[k]||0)+1; })); return t; }
+function shortMat(map){ const o={}; Object.entries(map).forEach(([k,v])=>{ o[MAT_SHORT[k]||k]=v; }); return o; }
+function schoolDays(){ return Object.entries(S.calendar).filter(([,v])=>num(v.plannedHours)>0).sort(([a],[b])=>a.localeCompare(b)); }
+function schoolDaysThrough(dateStr){ return schoolDays().filter(([d])=>d<=dateStr).length; }
+function totalPlannedHours(){ return schoolDays().reduce((a,[,v])=>a+num(v.plannedHours),0); }
+
+function drawProgress(){
+  const ctx=document.getElementById('c-progress'); if(!ctx) return;
+  const mode=S.progMode||'proc';
+  if(mode==='hours'){
+    const days=schoolDays(), totalH=totalPlannedHours(), n=days.length;
+    const labels=[], actual=[], planned=[], pace=[];
+    let cumH=0, cumP=0;
+    days.forEach(([d,v],i)=>{
+      cumH+=num(v.servedHours);
+      cumP+=num(v.plannedHours);
+      labels.push(fmtDate(d));
+      actual.push(cumH);
+      planned.push(cumP);
+      pace.push(n>0?+(((i+1)*totalH/n).toFixed(2)):0);
+    });
+    const datasets=[
+      { label:'Planned hours', data:planned, borderColor:'rgba(100,120,180,.5)', backgroundColor:'rgba(100,120,180,.12)', fill:true, tension:.2, pointRadius:0 },
+      { label:'Served hours', data:actual, borderColor:'#2F4F4F', backgroundColor:'rgba(95,135,135,.25)', fill:true, tension:.2, pointRadius:3 }
+    ];
+    if(n>0){
+      datasets.push({ label:'Even pace', data:pace, borderColor:'#999', borderDash:[4,4], pointRadius:0, fill:false });
+      datasets.push({ label:'Goal ('+totalH+'h)', data:labels.map(()=>totalH), borderColor:'#dcaa4b', borderDash:[6,5], pointRadius:0, fill:false });
+    }
+    S.charts.progress=new Chart(ctx,{ type:'line', data:{ labels, datasets }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } } });
+  } else {
+    const items=nonConsult().filter(s=>s.date).slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const u=S.settings.untracked||{};
+    let cum=(num(S.settings.observationProcedures)||0)+num(u.galvanic)+num(u.flashThermolysis)+num(u.manualThermolysis)+num(u.blend)+num(u.studentChoice);
+    const labels=[], data=[], pace=[];
+    const total=num(S.settings.totalProcedures)||400, n=schoolDays().length;
+    items.forEach(s=>{
+      cum+=sessionProcedures(s);
+      labels.push(fmtDate(s.date));
+      data.push(cum);
+      pace.push(n>0?+(schoolDaysThrough(s.date)*total/n).toFixed(2):0);
+    });
+    const datasets=[{ label:'Cumulative procedures', data, borderColor:'#2F4F4F', backgroundColor:'rgba(95,135,135,.18)', fill:true, tension:.2, pointRadius:3 }];
+    if(n>0) datasets.push({ label:'Even pace', data:pace, borderColor:'#999', borderDash:[4,4], pointRadius:0, fill:false });
+    datasets.push({ label:'Goal ('+total+')', data:labels.map(()=>total), borderColor:'#dcaa4b', borderDash:[6,5], pointRadius:0, fill:false });
+    S.charts.progress=new Chart(ctx,{ type:'line', data:{ labels, datasets }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } } });
+  }
+}
+function legendTip(){ let t=document.getElementById('legend-tip');
+  if(!t){ t=document.createElement('div'); t.id='legend-tip'; document.body.appendChild(t); }
+  return t; }
+function drawDoughnut(id, map, colorer, unit){
+  const ctx=document.getElementById(id); if(!ctx) return;
+  const ent=Object.entries(map).filter(([,v])=>v>0);
+  const labels=ent.map(e=>e[0]), data=ent.map(e=>e[1]);
+  if(!labels.length){ const p=ctx.parentElement; p.innerHTML='<div class="empty">No data yet</div>'; return; }
+  const u=unit||'procedure';
+  const bg=labels.map((l,i)=>colorer?colorer(l,i):CHART_COLORS[i%CHART_COLORS.length]);
+  S.charts[id]=new Chart(ctx,{ type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:bg, borderWidth:1, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ boxWidth:12, font:{size:11} },
+      onHover:(e,item,legend)=>{
+        const val=legend.chart.data.datasets[0].data[item.index];
+        const t=legendTip();
+        t.textContent=val+' '+u+(val===1?'':'s');
+        t.style.left=(e.native.clientX+12)+'px';
+        t.style.top =(e.native.clientY+12)+'px';
+        t.style.display='block';
+        e.native.target.style.cursor='default';
+      },
+      onLeave:()=>{ legendTip().style.display='none'; } } } } });
+}
+function drawBar(id, map){
+  const ctx=document.getElementById(id); if(!ctx) return;
+  const ent=Object.entries(map).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const labels=ent.map(e=>e[0]), data=ent.map(e=>e[1]);
+  if(!labels.length){ const p=ctx.parentElement; p.innerHTML='<div class="empty">No data yet</div>'; return; }
+  const bg=labels.map((l,i)=>CHART_COLORS[i%CHART_COLORS.length]);
+  S.charts[id]=new Chart(ctx,{ type:'bar',
+    data:{ labels, datasets:[{ data, backgroundColor:bg, borderWidth:0 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } } });
+}
+
+/* ============================ SETTINGS ============================ */
+function renderSettings(){
+  const v=document.getElementById('view-settings'), s=S.settings, r=s.requirements;
+  v.innerHTML=
+    '<div class="page-title">Settings</div>'+
+    '<div class="panel"><div class="ph">General</div><div class="pb">'+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="set-name">Student name</label><input type="text" id="set-name" value="'+esc(s.studentName)+'"><div class="hint">Used as your name and the default technician on new sessions.</div></div>'+
+      '</div>'+
+      '<div class="frow" style="align-items:flex-start">'+
+        '<div class="fg"><label for="set-start">Date school started</label><input type="date" id="set-start" value="'+esc(s.schoolStartDate)+'"><div class="hint">Anchors the calendar and pacing math.</div></div>'+
+        '<div class="fg xs" style="max-width:150px"><label for="set-total">Total procedures</label><input type="number" min="1" id="set-total" value="'+esc(s.totalProcedures)+'"><div class="hint">Total procedures needed to graduate.</div></div>'+
+        '<div class="fg xs" style="max-width:150px"><label for="set-hours">School hours needed</label><input type="number" min="0" step="0.25" id="set-hours" value="'+esc(s.schoolHoursNeeded)+'"><div class="hint">Clinical hours needed to graduate.</div></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="set-form">Google Form ID</label><input type="text" id="set-form" value="'+esc(s.formId)+'"><div class="hint">Used to build the prefilled submission link.</div></div>'+
+        '<div class="fg wide"><label for="set-email">Email for SOAP submissions</label><input type="email" id="set-email" value="'+esc(s.soapEmail||'')+'"><div class="hint">Prefills the form’s email-address field. Leave blank to omit.</div></div>'+
+      '</div>'+
+    '</div></div>'+
+    '<div class="panel"><div class="ph">Required procedures by modality</div><div class="pb"><div class="frow">'+
+      '<div class="fg xs"><label for="req-galv">Galvanic</label><input type="number" min="0" id="req-galv" value="'+esc(r.galvanic)+'"></div>'+
+      '<div class="fg xs"><label for="req-manual">Manual therm.</label><input type="number" min="0" id="req-manual" value="'+esc(r.manualThermolysis)+'"></div>'+
+      '<div class="fg xs"><label for="req-blend">Blend</label><input type="number" min="0" id="req-blend" value="'+esc(r.blend)+'"></div>'+
+      '<div class="fg xs"><label for="req-flash">Flash therm.</label><input type="number" min="0" id="req-flash" value="'+esc(r.flashThermolysis)+'"></div>'+
+      '<div class="fg xs"><label for="set-obs">Observation</label><input type="number" min="0" id="set-obs" value="'+esc(s.observationProcedures)+'"></div>'+
+      '</div><div class="hint" id="req-hint"></div></div></div>'+
+    '<div class="panel"><div class="ph">Untracked / backfilled procedures</div><div class="pb"><div class="frow">'+
+      '<div class="fg xs"><label for="unt-galv">Galvanic</label><input type="number" min="0" id="unt-galv" value="'+esc(s.untracked.galvanic)+'"></div>'+
+      '<div class="fg xs"><label for="unt-manual">Manual therm.</label><input type="number" min="0" id="unt-manual" value="'+esc(s.untracked.manualThermolysis)+'"></div>'+
+      '<div class="fg xs"><label for="unt-blend">Blend</label><input type="number" min="0" id="unt-blend" value="'+esc(s.untracked.blend)+'"></div>'+
+      '<div class="fg xs"><label for="unt-flash">Flash therm.</label><input type="number" min="0" id="unt-flash" value="'+esc(s.untracked.flashThermolysis)+'"></div>'+
+      '<div class="fg xs"><label for="unt-sc">Student choice</label><input type="number" min="0" id="unt-sc" value="'+esc(s.untracked.studentChoice)+'"></div>'+
+      '</div><div class="hint">Procedures already completed that you don’t want to log as individual sessions. They count toward totals but the table’s “Tracked” column shows only logged sessions.</div></div></div>'+
+    '<div class="panel"><div class="ph">Data</div><div class="pb" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+      '<button class="btn btn-g" data-act="export-json">Save Data</button>'+
+      '<button class="btn btn-g" data-act="import-json">Load Data</button>'+
+    '</div></div>'+
+    '<div class="hint" style="margin-bottom:10px">Zapmaster Tracker v'+esc(APP_VERSION)+' · data schema v'+esc(DATA_SCHEMA_VERSION)+' — see the <a href="#/about">About</a> page for details.</div>'+
+    '<div style="text-align:right"><button class="btn btn-p" id="set-save">Save Settings</button></div>';
+
+  const updHint=()=>{ const sum=num(v.querySelector('#req-galv').value)+num(v.querySelector('#req-manual').value)+num(v.querySelector('#req-blend').value)+num(v.querySelector('#req-flash').value)+num(v.querySelector('#set-obs').value); const t=num(v.querySelector('#set-total').value); v.querySelector('#req-hint').textContent='Specified: '+sum+' (incl. observation) — Student choice remainder: '+Math.max(0,t-sum); };
+  ['#req-galv','#req-manual','#req-blend','#req-flash','#set-obs','#set-total'].forEach(sel=>v.querySelector(sel).addEventListener('input',updHint));
+  updHint();
+  v.querySelector('#set-save').onclick=()=>{
+    s.studentName=v.querySelector('#set-name').value.trim();
+    s.schoolStartDate=v.querySelector('#set-start').value;
+    s.totalProcedures=num(v.querySelector('#set-total').value)||400;
+    s.observationProcedures=num(v.querySelector('#set-obs').value)||0;
+    s.schoolHoursNeeded=num(v.querySelector('#set-hours').value)||0;
+    s.formId=v.querySelector('#set-form').value.trim()||DEFAULT_FORM_ID;
+    s.soapEmail=v.querySelector('#set-email').value.trim();
+    s.requirements={ galvanic:num(v.querySelector('#req-galv').value), manualThermolysis:num(v.querySelector('#req-manual').value), blend:num(v.querySelector('#req-blend').value), flashThermolysis:num(v.querySelector('#req-flash').value) };
+    s.untracked={ galvanic:num(v.querySelector('#unt-galv').value), manualThermolysis:num(v.querySelector('#unt-manual').value), blend:num(v.querySelector('#unt-blend').value), flashThermolysis:num(v.querySelector('#unt-flash').value), studentChoice:num(v.querySelector('#unt-sc').value) };
+    persist(); refreshChrome(); S.calMonth=null;
+    v.querySelector('#set-save').textContent='Saved ✓';
+    setTimeout(()=>{ const b=v.querySelector('#set-save'); if(b) b.textContent='Save Settings'; },1400);
+  };
+}
+
+/* ============================ ABOUT ============================ */
+function renderAbout(){
+  const v=document.getElementById('view-about');
+  v.innerHTML=
+    '<div class="page-title">About</div>'+
+    '<div class="panel"><div class="ph">Zapmaster Session Tracker</div><div class="pb">'+
+      '<p>A self-contained tracker for electrology student procedures toward graduation — '+
+      'planning/tracking school days, non-clinical assignments, and generating prefilled Google '+
+      'Form (SOAP charting) submissions.</p>'+
+      '<div class="frow" style="margin-top:12px">'+
+        '<div class="fg"><span class="flabel">App version</span><div>'+esc(APP_VERSION)+'</div></div>'+
+        '<div class="fg"><span class="flabel">Data schema version</span><div>'+esc(DATA_SCHEMA_VERSION)+'</div></div>'+
+      '</div>'+
+      '<div class="hint" style="margin-top:12px">The data schema version is stamped into every JSON backup '+
+      '(Settings → Save Data) so a future version of the app can recognize and migrate older backups if the '+
+      'data format ever changes.</div>'+
+    '</div></div>'+
+    '<div class="panel"><div class="ph">Privacy</div><div class="pb">'+
+      '<p>Patient names are never stored or prefilled. Only the session date is required; a HIPAA-safe '+
+      'patient identifier can optionally be attached to a session by hashing a name + shared salt phrase '+
+      '(SHA-256, first 8 hex characters) — the raw name and salt are never persisted. Everything else is '+
+      'stored locally in this browser (<code>localStorage</code>); nothing is sent anywhere except when you '+
+      'choose to submit to the Google Form.</p>'+
+    '</div></div>'+
+    '<div class="panel"><div class="ph">Credits</div><div class="pb">'+
+      '<p>Charts rendered with <a href="https://www.chartjs.org/" target="_blank" rel="noopener">Chart.js</a>, '+
+      'colorblind-safe chart textures via <a href="https://github.com/ashiguruma/patternomaly" target="_blank" rel="noopener">patternomaly</a>.</p>'+
+    '</div></div>';
+}
+
+/* ============================ ASSIGNMENTS ============================ */
+function distinctCategories(){ return [...new Set(S.assignments.map(a=>a.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function linkCell(url,label){ return url? '<a href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(label||'Link')+' ↗</a>' : DASH; }
+function cmpStr(a,b){ return String(a||'').localeCompare(String(b||'')); }
+function cmpDateBlankLast(a,b){ if(!a&&!b) return 0; if(!a) return 1; if(!b) return -1; return a<b?-1:a>b?1:0; }
+function assignmentFieldCompare(a,b,key){
+  if(key==='dueDate'||key==='plannedDate'||key==='submittedDate') return cmpDateBlankLast(a[key],b[key]);
+  if(key==='submitted') return (a.submitted?1:0)-(b.submitted?1:0);
+  return cmpStr(a[key],b[key]);
+}
+const ASSIGNMENT_PRESETS = {
+  'due-soon': { label:'Due soon first', cmp:(a,b)=>cmpDateBlankLast(a.dueDate,b.dueDate) },
+  'unsubmitted-due': { label:'Unsubmitted first, then due date', cmp:(a,b)=>((a.submitted?1:0)-(b.submitted?1:0))||cmpDateBlankLast(a.dueDate,b.dueDate) },
+  'category-due': { label:'By category, then due date', cmp:(a,b)=>cmpStr(a.category,b.category)||cmpDateBlankLast(a.dueDate,b.dueDate) },
+  'recent-planned': { label:'Recently planned', cmp:(a,b)=>cmpDateBlankLast(b.plannedDate,a.plannedDate) }
+};
+function sortAssignments(list){
+  const st=S.assignmentSort, arr=list.slice();
+  if(st.preset && ASSIGNMENT_PRESETS[st.preset]) arr.sort(ASSIGNMENT_PRESETS[st.preset].cmp);
+  else{ const dir=st.dir==='desc'?-1:1; arr.sort((a,b)=>assignmentFieldCompare(a,b,st.key)*dir); }
+  return arr;
+}
+const ASSIGNMENT_COLUMNS=[
+  {key:'title',label:'Title'},{key:'category',label:'Category'},{key:'dueDate',label:'Due'},
+  {key:'plannedDate',label:'Planned'},{key:'submitted',label:'Submitted'}
+];
+function assignmentFilterActive(){ const f=S.assignmentFilter; return !!(f.text||f.category||f.submitted||f.dueFrom||f.dueTo||f.plannedFrom||f.plannedTo); }
+function matchesAssignmentFilter(a){
+  const f=S.assignmentFilter;
+  if(f.category && a.category!==f.category) return false;
+  if(f.submitted==='yes' && !a.submitted) return false;
+  if(f.submitted==='no' && a.submitted) return false;
+  if(f.dueFrom && (a.dueDate||'')<f.dueFrom) return false;
+  if(f.dueTo && (a.dueDate||'')>f.dueTo) return false;
+  if(f.plannedFrom && (a.plannedDate||'')<f.plannedFrom) return false;
+  if(f.plannedTo && (a.plannedDate||'')>f.plannedTo) return false;
+  if(f.text){
+    const hay=[a.title,a.category,a.notes].join(' \n ').toLowerCase();
+    if(!hay.includes(f.text.toLowerCase())) return false;
+  }
+  return true;
+}
+function assignmentFilterSummary(){
+  const f=S.assignmentFilter, parts=[];
+  if(f.text) parts.push('“'+f.text+'”');
+  if(f.category) parts.push('category: '+f.category);
+  if(f.submitted) parts.push(f.submitted==='yes'?'submitted':'not submitted');
+  if(f.dueFrom) parts.push('due from '+fmtDate(f.dueFrom));
+  if(f.dueTo) parts.push('due to '+fmtDate(f.dueTo));
+  if(f.plannedFrom) parts.push('planned from '+fmtDate(f.plannedFrom));
+  if(f.plannedTo) parts.push('planned to '+fmtDate(f.plannedTo));
+  return parts.join(' · ');
+}
+function openAssignmentFilterForm(){
+  const f=S.assignmentFilter;
+  const cats=distinctCategories();
+  const catOpts='<option value="">Any</option>'+cats.map(c=>'<option'+(f.category===c?' selected':'')+'>'+esc(c)+'</option>').join('');
+  const ov=openModal(
+    '<div class="modal-head">Filter Assignments<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body">'+
+      '<div class="field-block"><label for="aff-text">Contains text</label><input type="text" id="aff-text" value="'+esc(f.text)+'" placeholder="Search title, category, notes…"></div>'+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="aff-cat">Category</label><select id="aff-cat">'+catOpts+'</select></div>'+
+        '<div class="fg"><label for="aff-sub">Submitted</label><select id="aff-sub">'+
+          '<option value="">Any</option><option value="yes"'+(f.submitted==='yes'?' selected':'')+'>Submitted</option><option value="no"'+(f.submitted==='no'?' selected':'')+'>Not submitted</option></select></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="aff-due-from">Due from</label><input type="date" id="aff-due-from" value="'+esc(f.dueFrom)+'"></div>'+
+        '<div class="fg"><label for="aff-due-to">Due to</label><input type="date" id="aff-due-to" value="'+esc(f.dueTo)+'"></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="aff-plan-from">Planned from</label><input type="date" id="aff-plan-from" value="'+esc(f.plannedFrom)+'"></div>'+
+        '<div class="fg"><label for="aff-plan-to">Planned to</label><input type="date" id="aff-plan-to" value="'+esc(f.plannedTo)+'"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" id="aff-clear">Clear all</button><span style="flex:1"></span><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="aff-apply">Apply filter</button></div>'
+  );
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelector('#aff-clear').onclick=()=>{ S.assignmentFilter=emptyAssignmentFilter(); closeModal(); renderAssignments(); };
+  ov.querySelector('#aff-apply').onclick=()=>{
+    S.assignmentFilter={
+      text:ov.querySelector('#aff-text').value.trim(), category:ov.querySelector('#aff-cat').value,
+      submitted:ov.querySelector('#aff-sub').value,
+      dueFrom:ov.querySelector('#aff-due-from').value, dueTo:ov.querySelector('#aff-due-to').value,
+      plannedFrom:ov.querySelector('#aff-plan-from').value, plannedTo:ov.querySelector('#aff-plan-to').value
+    };
+    closeModal(); renderAssignments();
+  };
+}
+function renderAssignments(){
+  const v=document.getElementById('view-assignments');
+  const active=assignmentFilterActive();
+  const all=sortAssignments(S.assignments);
+  const rows=active?all.filter(matchesAssignmentFilter):all;
+  const banner=active
+    ? '<div class="warn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+      '<span>Filtered: showing <b>'+rows.length+'</b> of '+all.length+' assignments'+(assignmentFilterSummary()?' — '+esc(assignmentFilterSummary()):'')+'</span>'+
+      '<button class="btn btn-g btn-sm" id="clear-assignment-filter">Clear filter</button></div>'
+    : '';
+  const cats=distinctCategories();
+  const datalist='<datalist id="assignment-categories">'+cats.map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';
+  const remainingCount=all.filter(a=>!a.submitted).length;
+  const summary=all.length
+    ? '<div class="hint" style="margin-bottom:10px">'+(all.length-remainingCount)+' of '+all.length+' submitted — <b>'+remainingCount+' remaining</b></div>'
+    : '';
+  let body;
+  if(!S.assignments.length){
+    body='<div class="empty">No assignments yet. Click “New Assignment” to add one, or import a CSV to backfill.</div>';
+  } else if(!rows.length){
+    body='<div class="empty">No assignments match the current filter.</div>';
+  } else {
+    body='<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
+      ASSIGNMENT_COLUMNS.map(c=>{
+        const active=!S.assignmentSort.preset && S.assignmentSort.key===c.key;
+        const ind=active?'<span class="sort-ind">'+(S.assignmentSort.dir==='desc'?'▼':'▲')+'</span>':'';
+        return '<th class="sortable" data-sort="'+c.key+'">'+esc(c.label)+ind+'</th>';
+      }).join('')+
+      '<th>Links</th><th></th></tr></thead><tbody>'+
+      rows.map(a=>
+        '<tr>'+
+          '<td><button class="link-btn" data-view="'+a.id+'">'+esc(a.title||'(untitled)')+'</button></td>'+
+          '<td>'+(a.category?esc(a.category):DASH)+'</td>'+
+          '<td>'+(a.dueDate?esc(fmtDate(a.dueDate)):DASH)+'</td>'+
+          '<td>'+(a.plannedDate?esc(fmtDate(a.plannedDate)):DASH)+'</td>'+
+          '<td>'+(a.submittedDate?esc(fmtDate(a.submittedDate)):(a.submitted?'<span class="tick">✓</span>':DASH))+'</td>'+
+          '<td>'+linkCell(a.assignmentLink,'Assignment')+(a.submissionLink?' · '+linkCell(a.submissionLink,'Submission'):'')+'</td>'+
+          '<td><button class="btn btn-g btn-sm" data-edit="'+a.id+'">Edit</button></td>'+
+        '</tr>'
+      ).join('')+
+      '</tbody></table></div>';
+  }
+  const presetOptions=Object.entries(ASSIGNMENT_PRESETS).map(([k,p])=>'<option value="'+k+'"'+(S.assignmentSort.preset===k?' selected':'')+'>'+esc(p.label)+'</option>').join('');
+  v.innerHTML=datalist+'<div class="page-title">Assignments <span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+      '<select id="assignment-sort-mode" style="width:auto"><option value=""'+(S.assignmentSort.preset?'':' selected')+'>Sort: custom (click a column)</option>'+presetOptions+'</select>'+
+      '<button class="btn '+(active?'btn-a':'btn-g')+'" id="filter-assignment">Filter'+(active?' ('+rows.length+')':'')+'</button>'+
+      '<div class="dropdown"><button class="btn btn-g" data-dd="export-menu-assignments">Export ▾</button>'+
+        '<div class="dd-menu" id="export-menu-assignments"><button id="assign-export-csv">CSV</button><button id="assign-export-tsv">TSV</button></div></div>'+
+      '<div class="dropdown"><button class="btn btn-g" data-dd="import-menu-assignments">Import ▾</button>'+
+        '<div class="dd-menu" id="import-menu-assignments"><button id="assign-import-csv">CSV</button><button id="assign-import-tsv">TSV</button></div></div>'+
+      '<button class="btn btn-p" id="new-assignment">+ New Assignment</button></span></div>'+
+    summary+
+    banner+
+    '<div class="panel"><div class="pb">'+body+'</div></div>';
+  v.querySelector('#new-assignment').onclick=()=>openAssignmentForm(null);
+  v.querySelector('#filter-assignment').onclick=()=>openAssignmentFilterForm();
+  const caf=v.querySelector('#clear-assignment-filter'); if(caf) caf.onclick=()=>{ S.assignmentFilter=emptyAssignmentFilter(); renderAssignments(); };
+  v.querySelector('#assign-export-csv').onclick=()=>exportAssignmentsCSV();
+  v.querySelector('#assign-export-tsv').onclick=()=>exportAssignmentsTSV();
+  v.querySelector('#assign-import-csv').onclick=()=>startCsvImport('assignments','csv');
+  v.querySelector('#assign-import-tsv').onclick=()=>startCsvImport('assignments','tsv');
+  v.querySelector('#assignment-sort-mode').onchange=function(){
+    S.assignmentSort=this.value?{preset:this.value}:{key:'dueDate',dir:'asc'};
+    renderAssignments();
+  };
+  v.querySelectorAll('[data-sort]').forEach(th=>th.onclick=()=>{
+    const key=th.dataset.sort;
+    if(!S.assignmentSort.preset && S.assignmentSort.key===key) S.assignmentSort.dir=S.assignmentSort.dir==='desc'?'asc':'desc';
+    else S.assignmentSort={key,dir:'asc'};
+    renderAssignments();
+  });
+  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navTo('assignment/'+b.dataset.view));
+  v.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openAssignmentForm(b.dataset.edit));
+}
+function renderAssignmentView(id){
+  const a=S.assignments.find(x=>x.id===id); if(!a){ navTo('assignments'); return; }
+  S.view='assignment'; // pseudo-view (not a nav tab)
+  destroyCharts();
+  const v=document.getElementById('view-assignment');
+  v.innerHTML=
+    '<div class="page-title"><span>'+esc(a.title||'(untitled)')+'</span>'+
+      '<span class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+        '<button class="btn btn-g" id="av-back">← Back</button>'+
+        '<button class="btn btn-d" id="av-del">Delete</button>'+
+        '<button class="btn btn-a" id="av-edit">Edit</button>'+
+      '</span></div>'+
+    '<div class="panel"><div class="pb"><div class="sv-grid">'+
+      svItem('Category',a.category)+
+      svItem('Due date',a.dueDate?fmtDate(a.dueDate):'')+
+      svItem('Planned date',a.plannedDate?fmtDate(a.plannedDate):'')+
+      svItem('Submitted',a.submitted?'Yes':'No')+
+      svItem('Submitted date',a.submittedDate?fmtDate(a.submittedDate):'')+
+      '<div class="sv-item"><div class="k">Assignment link</div><div class="v">'+linkCell(a.assignmentLink,'Assignment')+'</div></div>'+
+      '<div class="sv-item"><div class="k">Submission link</div><div class="v">'+linkCell(a.submissionLink,'Submission')+'</div></div>'+
+      svItem('Notes',a.notes,true)+
+    '</div></div></div>';
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  v.classList.add('active');
+  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='assignments'));
+  v.querySelector('#av-back').onclick=()=>navTo('assignments');
+  v.querySelector('#av-edit').onclick=()=>openAssignmentForm(a.id);
+  v.querySelector('#av-del').onclick=async()=>{
+    if(await confirmDialog('Delete assignment','<p>Delete this assignment permanently? This cannot be undone.</p>','Delete')){
+      S.assignments=S.assignments.filter(x=>x.id!==a.id); persist(); navTo('assignments');
+    }
+  };
+}
+function openAssignmentForm(id){
+  const a = id ? S.assignments.find(x=>x.id===id) : Object.assign({id:null},ASSIGNMENT_DEFAULTS);
+  const cats=distinctCategories();
+  const catList='<datalist id="assignment-categories-form">'+cats.map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';
+  const ov=openModal(
+    '<div class="modal-head">'+(id?'Edit Assignment':'New Assignment')+'<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body">'+
+      catList+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="af-title">Title *</label><input type="text" id="af-title" value="'+esc(a.title||'')+'"></div>'+
+        '<div class="fg wide"><label for="af-category">Category</label><input type="text" id="af-category" list="assignment-categories-form" value="'+esc(a.category||'')+'"></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg"><label for="af-due">Due date</label><input type="date" id="af-due" value="'+esc(a.dueDate||'')+'"></div>'+
+        '<div class="fg"><label for="af-planned">Planned date</label><input type="date" id="af-planned" value="'+esc(a.plannedDate||'')+'"></div>'+
+        '<div class="fg"><label for="af-submitted-date">Submitted date</label><input type="date" id="af-submitted-date" value="'+esc(a.submittedDate||'')+'"></div>'+
+        '<div class="fg xs" style="max-width:140px"><label class="cbitem" style="padding-top:22px"><input type="checkbox" id="af-submitted"'+(a.submitted?' checked':'')+'> Submitted</label></div>'+
+      '</div>'+
+      '<div class="frow">'+
+        '<div class="fg wide"><label for="af-alink">Assignment link</label><input type="text" id="af-alink" placeholder="https://…" value="'+esc(a.assignmentLink||'')+'"></div>'+
+        '<div class="fg wide"><label for="af-slink">Submission link</label><input type="text" id="af-slink" placeholder="https://…" value="'+esc(a.submissionLink||'')+'"></div>'+
+      '</div>'+
+      '<div class="field-block"><label for="af-notes">Notes / description</label><textarea id="af-notes">'+esc(a.notes||'')+'</textarea></div>'+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="af-save">Save Assignment</button></div>'
+  );
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelector('#af-save').onclick=()=>{
+    const title=ov.querySelector('#af-title').value.trim();
+    if(!title){ alert('Title is required.'); ov.querySelector('#af-title').focus(); return; }
+    const rec={
+      id: a.id||uid(), title,
+      category: ov.querySelector('#af-category').value.trim(),
+      dueDate: ov.querySelector('#af-due').value,
+      plannedDate: ov.querySelector('#af-planned').value,
+      submittedDate: ov.querySelector('#af-submitted-date').value,
+      submitted: ov.querySelector('#af-submitted').checked,
+      assignmentLink: ov.querySelector('#af-alink').value.trim(),
+      submissionLink: ov.querySelector('#af-slink').value.trim(),
+      notes: ov.querySelector('#af-notes').value
+    };
+    if(a.id){ const idx=S.assignments.findIndex(x=>x.id===a.id); S.assignments[idx]=rec; }
+    else S.assignments.push(rec);
+    persist(); closeModal();
+    if(S.view==='assignments') renderAssignments(); else renderAssignmentView(rec.id);
+  };
+}
+
+/* ============================ EXPORT / IMPORT ============================ */
+function download(name, text, type){
+  const blob=new Blob([text],{type:type||'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function fileStamp(){ return new Date().toISOString().slice(0,19).replace(/:/g,'-'); }
+function exportJSON(){ download('zapmaster-sessions-'+fileStamp()+'.json', JSON.stringify({schemaVersion:DATA_SCHEMA_VERSION,appVersion:APP_VERSION,settings:S.settings,sessions:S.sessions,calendar:S.calendar,assignments:S.assignments},null,2), 'application/json'); }
+
+/* ---- CSV/TSV parsing & serialization ---- */
+function parseCSV(text){
+  const rows=[]; let row=[]; let field=''; let inQuotes=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQuotes){
+      if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQuotes=false; }
+      else field+=c;
+    } else {
+      if(c==='"') inQuotes=true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\r'){ /* skip */ }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field+=c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r=>!(r.length===1 && r[0]===''));
+}
+function parseTSV(text){
+  return text.replace(/\r/g,'').split('\n').filter(l=>l!=='').map(l=>l.split('\t'));
+}
+function rowsToCSV(rows){ return rows.map(r=>r.map(cell=>{ const v=String(cell); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(',')).join('\n'); }
+function rowsToTSV(rows){ return rows.map(r=>r.map(cell=>String(cell).replace(/[\t\n]/g,' ')).join('\t')).join('\n'); }
+function parseBool(v){ return ['yes','true','1','y'].includes(String(v||'').trim().toLowerCase()); }
+// Spreadsheet dates rarely come in as ISO — normalize M/D/YYYY, YYYY/M/D, and other
+// Date-parseable strings to YYYY-MM-DD so fmtDate() and <input type=date> can read them.
+function normalizeDateStr(v){
+  v=(v||'').trim();
+  if(!v) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  let m=v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m) return m[3]+'-'+pad2(+m[1])+'-'+pad2(+m[2]);
+  m=v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if(m) return m[1]+'-'+pad2(+m[2])+'-'+pad2(+m[3]);
+  const d=new Date(v);
+  if(!isNaN(d.getTime())) return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  return v; // couldn't parse — leave as-is rather than losing the original value
+}
+
+/* ---- Sessions CSV/TSV ---- */
+const SESSION_CSV_COLS=['date','startTime','endTime','appointmentType','technician','procedures','patientId','modalities','machines','megahertz','filamentMaterial','filamentSize','filamentBrand','levelsUsed','bodyAreas','bodyAreasNote','timeSpentText','soapSubmitted','subjective','objective','assessment','plan','myNotes'];
+const SESSION_CSV_HEADERS={ date:'Date', startTime:'Start Time', endTime:'End Time', appointmentType:'Type', technician:'Technician', procedures:'Procedures', patientId:'Patient ID', modalities:'Modalities', machines:'Machines', megahertz:'MHz', filamentMaterial:'Filament Material', filamentSize:'Filament Size', filamentBrand:'Filament Brand', levelsUsed:'Levels Used', bodyAreas:'Body Areas', bodyAreasNote:'Body Areas Note', timeSpentText:'Time Spent', soapSubmitted:'SOAP Submitted', subjective:'Subjective', objective:'Objective', assessment:'Assessment', plan:'Plan', myNotes:'My Notes' };
+// 'procedures' is intentionally left unmapped here — it's a derived count (see sessionProcedures()),
+// driven entirely by modalities, so it's export-only and ignored on import like any unknown column.
+const SESSION_CSV_HEADER_MAP={ 'date':'date', 'start time':'startTime', 'end time':'endTime', 'type':'appointmentType', 'technician':'technician', 'patient id':'patientId', 'modalities':'modalities', 'machines':'machines', 'mhz':'megahertz', 'filament material':'filamentMaterial', 'filament size':'filamentSize', 'filament brand':'filamentBrand', 'levels used':'levelsUsed', 'body areas':'bodyAreas', 'body areas note':'bodyAreasNote', 'time spent':'timeSpentText', 'soap submitted':'soapSubmitted', 'subjective':'subjective', 'objective':'objective', 'assessment':'assessment', 'plan':'plan', 'my notes':'myNotes' };
+const SESSION_CSV_DATE_FIELDS=['date'];
+const SESSION_CSV_LIST_FIELDS=['machines','megahertz','filamentMaterial','filamentSize','filamentBrand','bodyAreas'];
+const SESSION_DEFAULTS={ date:'', startTime:'', endTime:'', appointmentType:'Service', technician:'', patientId:'', subjective:'', objective:'', assessment:'', plan:'', modalities:{}, machines:[], megahertz:[], filamentMaterial:[], filamentSize:[], filamentBrand:[], levelsUsed:'', timeSpentText:'', soapSubmitted:false, bodyAreas:[], bodyAreasNote:'', myNotes:'' };
+function sessionsToRows(){
+  const rows=[SESSION_CSV_COLS.map(c=>SESSION_CSV_HEADERS[c])];
+  S.sessions.slice().sort((a,b)=>sessionOrder(a).localeCompare(sessionOrder(b))).forEach(s=>{
+    rows.push(SESSION_CSV_COLS.map(c=>{
+      if(c==='procedures') return sessionProcedures(s);
+      if(c==='modalities') return Object.entries(s.modalities||{}).filter(([,v])=>num(v)>0).map(([k,v])=>k+':'+v).join('; ');
+      if(SESSION_CSV_LIST_FIELDS.includes(c)) return (s[c]||[]).join('; ');
+      if(c==='soapSubmitted') return s.soapSubmitted?'yes':'no';
+      return s[c]==null?'':s[c];
+    }));
+  });
+  return rows;
+}
+function exportSessionsCSV(){ download('zapmaster-sessions-'+fileStamp()+'.csv', rowsToCSV(sessionsToRows()), 'text/csv'); }
+function exportSessionsTSV(){ download('zapmaster-sessions-'+fileStamp()+'.tsv', rowsToTSV(sessionsToRows()), 'text/tab-separated-values'); }
+// Rows only carry the fields present as columns, so updating an existing session
+// doesn't blank out fields the spreadsheet simply didn't include.
+function rowsToSessions(rows){
+  if(!rows.length) return [];
+  const headers=rows[0].map(h=>String(h||'').trim().toLowerCase());
+  const fields=headers.map(h=>SESSION_CSV_HEADER_MAP[h]||null);
+  return rows.slice(1).filter(r=>r.some(c=>String(c||'').trim())).map(r=>{
+    const rec={};
+    fields.forEach((f,i)=>{
+      if(!f) return;
+      const v=(r[i]||'').trim();
+      if(f==='soapSubmitted') rec[f]=parseBool(v);
+      else if(SESSION_CSV_DATE_FIELDS.includes(f)) rec[f]=normalizeDateStr(v);
+      else if(f==='modalities'){
+        const m={};
+        v.split(';').forEach(pair=>{
+          const [k,c]=pair.split(':').map(x=>(x||'').trim());
+          if(k && c!==undefined && c!=='') m[k]=num(c);
+        });
+        rec[f]=m;
+      }
+      else if(SESSION_CSV_LIST_FIELDS.includes(f)) rec[f]=v?v.split(';').map(x=>x.trim()).filter(Boolean):[];
+      else rec[f]=v;
+    });
+    return rec;
+  }).filter(rec=>rec.date);
+}
+
+/* ---- Assignments CSV/TSV ---- */
+const ASSIGNMENT_CSV_COLS=['title','category','assignmentLink','submissionLink','submitted','notes','plannedDate','submittedDate','dueDate'];
+const ASSIGNMENT_CSV_HEADERS={ title:'Title', category:'Category', assignmentLink:'Assignment Link', submissionLink:'Submission Link', submitted:'Submitted', notes:'Notes', plannedDate:'Planned Date', submittedDate:'Submitted Date', dueDate:'Due Date' };
+// Header labels here match ASSIGNMENT_CSV_HEADER_MAP's keys (case-insensitive), so an exported file re-imports cleanly.
+const ASSIGNMENT_CSV_HEADER_MAP={ 'title':'title','category':'category','assignment link':'assignmentLink','submission link':'submissionLink','submitted':'submitted','notes':'notes','description':'notes','planned date':'plannedDate','submitted date':'submittedDate','due date':'dueDate' };
+const ASSIGNMENT_CSV_DATE_FIELDS=['plannedDate','submittedDate','dueDate'];
+const ASSIGNMENT_DEFAULTS={ title:'', category:'', assignmentLink:'', submissionLink:'', submitted:false, notes:'', plannedDate:'', submittedDate:'', dueDate:'' };
+function assignmentsToRows(){
+  const rows=[ASSIGNMENT_CSV_COLS.map(c=>ASSIGNMENT_CSV_HEADERS[c])];
+  sortAssignments(S.assignments).forEach(a=>{
+    rows.push(ASSIGNMENT_CSV_COLS.map(c=>{
+      if(c==='submitted') return a.submitted?'yes':'no';
+      return a[c]==null?'':a[c];
+    }));
+  });
+  return rows;
+}
+function exportAssignmentsCSV(){ download('zapmaster-assignments-'+fileStamp()+'.csv', rowsToCSV(assignmentsToRows()), 'text/csv'); }
+function exportAssignmentsTSV(){ download('zapmaster-assignments-'+fileStamp()+'.tsv', rowsToTSV(assignmentsToRows()), 'text/tab-separated-values'); }
+function rowsToAssignments(rows){
+  if(!rows.length) return [];
+  const headers=rows[0].map(h=>String(h||'').trim().toLowerCase());
+  const fields=headers.map(h=>ASSIGNMENT_CSV_HEADER_MAP[h]||null);
+  return rows.slice(1).filter(r=>r.some(c=>String(c||'').trim())).map(r=>{
+    const rec={};
+    fields.forEach((f,i)=>{
+      if(!f) return;
+      const v=(r[i]||'').trim();
+      if(f==='submitted') rec[f]=parseBool(v);
+      else if(ASSIGNMENT_CSV_DATE_FIELDS.includes(f)) rec[f]=normalizeDateStr(v);
+      else rec[f]=v;
+    });
+    return rec;
+  }).filter(rec=>rec.title);
+}
+
+/* ---- Generic import pipeline (config-driven; used by both Sessions and Assignments) ---- */
+const IMPORT_CONFIGS={
+  sessions:{
+    noun:'session',
+    list:()=>S.sessions,
+    defaults:SESSION_DEFAULTS,
+    parseRows:rowsToSessions,
+    keyOf:r=>(r.date||'')+'|'+(r.startTime||''),
+    describe:r=>(r.date?fmtDate(r.date):'(no date)')+(fmtTimeRange(r)?' '+fmtTimeRange(r):''),
+    emptyMsg:'No session rows found in that file (need at least a Date column).',
+    render:()=>{ if(S.view==='sessions') renderSessions(); }
+  },
+  assignments:{
+    noun:'title',
+    list:()=>S.assignments,
+    defaults:ASSIGNMENT_DEFAULTS,
+    parseRows:rowsToAssignments,
+    keyOf:r=>(r.title||'').trim().toLowerCase(),
+    describe:r=>r.title,
+    emptyMsg:'No assignment rows found in that file (need at least a Title column).',
+    render:()=>{ if(S.view==='assignments') renderAssignments(); }
+  }
+};
+async function importRecordsFile(config, file, format){
+  const text=await file.text();
+  const incoming=config.parseRows(format==='tsv'?parseTSV(text):parseCSV(text));
+  if(!incoming.length){ alert(config.emptyMsg); return; }
+  const existingByKey={};
+  config.list().forEach(rec=>{ existingByKey[config.keyOf(rec)]=rec; });
+  const conflicts=incoming.filter(r=>existingByKey[config.keyOf(r)]);
+  if(!conflicts.length){
+    incoming.forEach(r=>config.list().push(Object.assign({id:uid()},config.defaults,r)));
+    persist(); config.render();
+    alert('Imported '+incoming.length+' '+config.noun+(incoming.length>1?'s':'')+'.');
+    return;
+  }
+  openImportConflictModal(config, incoming, existingByKey);
+}
+function openImportConflictModal(config, incoming, existingByKey){
+  const conflictRows=incoming.filter(r=>existingByKey[config.keyOf(r)]);
+  const newCount=incoming.length-conflictRows.length;
+  const rowHTML=conflictRows.map(r=>{
+    const key=config.keyOf(r);
+    return '<div class="frow" style="align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px">'+
+      '<div class="fg wide" style="min-width:220px"><div style="font-weight:600">'+esc(config.describe(r))+'</div><div class="hint">Already exists</div></div>'+
+      '<div class="fg" style="min-width:260px"><select data-conflict="'+esc(key)+'">'+
+        '<option value="update" selected>Update existing</option>'+
+        '<option value="duplicate">Add as new (duplicate)</option>'+
+        '<option value="skip">Skip this row</option>'+
+      '</select></div>'+
+    '</div>';
+  }).join('');
+  const ov=openModal(
+    '<div class="modal-head">Resolve '+conflictRows.length+' matching '+config.noun+(conflictRows.length>1?'s':'')+'<button class="x" data-c>&times;</button></div>'+
+    '<div class="modal-body">'+
+      '<p class="hint" style="margin-bottom:12px;text-transform:none;letter-spacing:0">'+newCount+' row'+(newCount!==1?'s':'')+' will be added as new. These already exist — choose what to do with each.</p>'+
+      '<div style="margin-bottom:10px;display:flex;gap:8px"><button class="btn btn-g btn-sm" id="cf-all-update">Update all</button><button class="btn btn-g btn-sm" id="cf-all-dup">Duplicate all</button><button class="btn btn-g btn-sm" id="cf-all-skip">Skip all</button></div>'+
+      rowHTML+
+    '</div>'+
+    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="cf-apply">Apply</button></div>'
+  );
+  const selects=()=>ov.querySelectorAll('[data-conflict]');
+  ov.querySelector('#cf-all-update').onclick=()=>selects().forEach(s=>s.value='update');
+  ov.querySelector('#cf-all-dup').onclick=()=>selects().forEach(s=>s.value='duplicate');
+  ov.querySelector('#cf-all-skip').onclick=()=>selects().forEach(s=>s.value='skip');
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelector('#cf-apply').onclick=()=>{
+    const choices={}; selects().forEach(s=>{ choices[s.dataset.conflict]=s.value; });
+    let added=0, updated=0, skipped=0;
+    incoming.forEach(r=>{
+      const key=config.keyOf(r);
+      const existing=existingByKey[key];
+      if(!existing){ config.list().push(Object.assign({id:uid()},config.defaults,r)); added++; return; }
+      const choice=choices[key];
+      if(choice==='update'){ Object.assign(existing,r); updated++; }
+      else if(choice==='duplicate'){ config.list().push(Object.assign({id:uid()},config.defaults,r)); added++; }
+      else skipped++;
+    });
+    persist(); closeModal();
+    config.render();
+    alert('Import complete — '+added+' added, '+updated+' updated, '+skipped+' skipped.');
+  };
+}
+let pendingImportTarget=null, pendingImportFormat=null; // set by a page's Import-menu item, consumed by #file-import-csv's change handler
+function startCsvImport(target, format){ pendingImportTarget=target; pendingImportFormat=format; document.getElementById('file-import-csv').click(); }
+let importHandler=null; // optional one-shot handler for the next file selection
+function importJSON(handler){ importHandler=handler||null; document.getElementById('file-import').click(); }
+function applyImport(data){
+  if(data.schemaVersion && data.schemaVersion>DATA_SCHEMA_VERSION){
+    alert('This backup was made with a newer version of Zapmaster Tracker (data schema v'+data.schemaVersion+', this app supports v'+DATA_SCHEMA_VERSION+'). It will still be imported, but some fields may not be recognized.');
+  }
+  if(data.settings) S.settings=Object.assign(defaultSettings(),data.settings);
+  if(Array.isArray(data.sessions)) S.sessions=data.sessions;
+  if(data.calendar&&typeof data.calendar==='object') S.calendar=data.calendar;
+  if(Array.isArray(data.assignments)) S.assignments=data.assignments;
+  normalizeSettings(S.settings);
+  persist(); refreshChrome(); S.calMonth=null;
+}
+function readImport(file){ return new Promise((res,rej)=>{ const rd=new FileReader(); rd.onload=()=>{ try{ res(JSON.parse(rd.result)); }catch(e){ rej(e); } }; rd.readAsText(file); }); }
+async function handleImportFile(file){
+  try{
+    const data=await readImport(file);
+    if(!await confirmDialog('Import backup','<p>This will <b>replace</b> all current settings, sessions, and calendar data with the imported file. Continue?</p>','Replace data')) return;
+    applyImport(data); navTo(NAV_VIEWS.includes(S.view)?S.view:'sessions'); // imported session may no longer exist
+  }catch(e){ alert('Could not import file: '+e.message); }
+}
+async function onboardImport(file){
+  try{
+    const data=await readImport(file);
+    applyImport(data); closeModal(); navTo('sessions');
+  }catch(e){ alert('Could not import file: '+e.message); }
+}
+
+/* ============================ WIRING ============================ */
+document.querySelectorAll('nav#tabs button').forEach(b=>b.onclick=()=>navTo(b.dataset.nav));
+document.addEventListener('click',e=>{
+  const dd=e.target.closest('[data-dd]');
+  const act=e.target.closest('[data-act]');
+  // close any open dropdown when clicking outside a toggle or the menu itself
+  if(!dd && !e.target.closest('.dd-menu')) document.querySelectorAll('.dd-menu.open').forEach(m=>m.classList.remove('open'));
+  if(dd){ const menu=document.getElementById(dd.dataset.dd); if(menu){ const wasOpen=menu.classList.contains('open'); document.querySelectorAll('.dd-menu.open').forEach(m=>m.classList.remove('open')); menu.classList.toggle('open',!wasOpen); } return; }
+  if(!act){
+    // a click on a dd-menu item without data-act (its own onclick already ran) still needs the menu closed
+    if(e.target.closest('.dd-menu')) document.querySelectorAll('.dd-menu.open').forEach(m=>m.classList.remove('open'));
+    return;
+  }
+  const a=act.dataset.act;
+  if(a==='export-json') exportJSON();
+  else if(a==='import-json') importJSON();
+  else if(a==='toggle-pw'){
+    const inp=document.getElementById(act.dataset.pwTarget);
+    if(inp){ const showing=inp.type==='text'; inp.type=showing?'password':'text'; act.textContent=showing?'Show':'Hide'; }
+  }
+  document.querySelectorAll('.dd-menu.open').forEach(m=>m.classList.remove('open'));
+});
+document.getElementById('file-import').addEventListener('change',e=>{ const f=e.target.files[0]; if(f){ const h=importHandler||handleImportFile; importHandler=null; h(f); } e.target.value=''; });
+document.getElementById('file-import-csv').addEventListener('change',e=>{
+  const f=e.target.files[0];
+  if(f && pendingImportTarget) importRecordsFile(IMPORT_CONFIGS[pendingImportTarget], f, pendingImportFormat);
+  pendingImportTarget=null; pendingImportFormat=null; e.target.value='';
+});
+
+/* ============================ INIT ============================ */
+refreshChrome();
+maybeOnboard();
+window.addEventListener('hashchange', router);
+router(); // honors an initial #/... hash, else falls back to the saved K.view tab
+</script>
+</body>
+</html>
