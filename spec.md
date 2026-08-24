@@ -44,7 +44,8 @@ SHA-256 via the Web Crypto API, and the first 8 hex characters of the digest are
   (Consult/Service/Colleague/Self work — "Colleague" is tracked separately in-app but submitted to
   the Google Form as "Service"), `technician`, SOAP fields (`subjective/objective/assessment/plan`),
   `modalities` (map of form-modality name → procedure count), `machines[]`, `megahertz[]`,
-  `filamentMaterial[]`, `filamentSize[]`, `filamentBrand[]`, `levelsUsed`, `timeSpentText`,
+  `filamentMaterial[]`, `filamentSize[]`, `filamentBrand[]`, `levelsUsed`, `hairDensityRemoved[]`,
+  `hairColorsPresent[]`, `bonusDiscussed[]`, `adverseEventNote`, `timeSpentText`,
   `soapSubmitted` (bool), `bodyAreas[]`, `bodyAreasNote`, `myNotes` (private — never sent to the
   Google Form). Procedure count = sum of modality
   counts; **Consults always count 0**. A session is **"future" (not yet happened)** until its

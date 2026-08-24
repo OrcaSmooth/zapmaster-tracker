@@ -303,6 +303,9 @@ const FIL_MAT    = ['Insulated - Traditional (ITH/ISO Guard)','Stainless','Gold'
 const FIL_SIZE   = ['1','2','3','4','5','6'];
 const FIL_BRAND  = ['Ballet','Sterex','IBIS','Protec','Unknown','NA'];
 const BODY_AREAS = ['Upper lip','Chin','Cheeks','Jawline','Sideburns','Neck (front)','Neck (back)','Eyebrows','Ears','Chest','Breast/Areola','Abdomen','Underarms','Shoulders','Upper back','Lower back','Arms','Hands','Fingers','Bikini','Buttocks','Legs (upper)','Legs (lower)','Feet','Toes'];
+const HAIR_DENSITY = ['Vellus (fine, small against the skin)','Accelerated vellus (fine/medium caliber, light catching and sticks up off face)','Terminal (medium/thick/extra thick, has typically visual a bounce back when manipulated)'];
+const HAIR_COLORS  = ['Blonde','Light Brown','Dark Brown','Black','Red','Gray'];
+const BONUS_DISCUSSED = ['Pre & post care recommendations *with care kit sent home','Clincal endpoint reached: inflammation & redness (edema/erythema)','Noticeable: changes in hair, amount, color, look and texture','Adverse event experienced to watch for incase of minor over-treatment: pustules, blisters, bruising. If one was experienced explain the event and the recommend remedy'];
 
 // Google Form entry IDs
 const ENTRY = {
@@ -310,7 +313,9 @@ const ENTRY = {
   subjective:'1519303300', objective:'1459603147', assessment:'789531885', plan:'605200270',
   modality:'702116306', machine:'1738958763', megahertz:'2063323894',
   filMaterial:'652269251', filSize:'1227595158', filBrand:'754563532',
-  levels:'1149207424', timeSpent:'1086437070'
+  levels:'1149207424', timeSpent:'1086437070',
+  hairDensity:'1361846811', hairColors:'154772253',
+  bonusDiscussed:'583881986', adverseEventNote:'961235813'
 };
 
 // Requirement category -> modality names that count toward it
@@ -956,7 +961,8 @@ function openSessionForm(id, prefillDate){
     id:null, date:prefillDate||todayISO(), appointmentType:'Service', technician:S.settings.studentName||'',
     subjective:'',objective:'',assessment:'',plan:'', modalities:{},
     machines:[],megahertz:[],filamentMaterial:[],filamentSize:[],filamentBrand:[],
-    levelsUsed:'', timeSpentText:'', soapSubmitted:false, bodyAreas:[], bodyAreasNote:'', myNotes:''
+    levelsUsed:'', timeSpentText:'', soapSubmitted:false, bodyAreas:[], bodyAreasNote:'', myNotes:'',
+    hairDensityRemoved:[], hairColorsPresent:[], bonusDiscussed:[], adverseEventNote:''
   };
   const modRows=MODALITIES.map((m,i)=>
     '<div class="mod-row"><label for="mod_'+i+'">'+esc(m)+'</label>'+
@@ -1000,7 +1006,13 @@ function openSessionForm(id, prefillDate){
         '<div class="fg"><span class="flabel">Filament size</span>'+cbGroup('filamentSize',FIL_SIZE,s.filamentSize)+'</div>'+
         '<div class="fg wide"><span class="flabel">Filament brand</span>'+cbGroup('filamentBrand',FIL_BRAND,s.filamentBrand)+'</div>'+
       '</div>'+
-      '<div class="field-block"><label for="sf-levels">Levels used (write NA if none)</label><input type="text" id="sf-levels" value="'+esc(s.levelsUsed||'')+'"></div>'+
+      '<div class="field-block"><label for="sf-levels">Levels used (write NA if none) — mA/µA, timing, therm intensity, ana/cata levels</label><input type="text" id="sf-levels" value="'+esc(s.levelsUsed||'')+'"></div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><span class="flabel">Hair density removed</span>'+cbGroup('hairDensityRemoved',HAIR_DENSITY,s.hairDensityRemoved)+'</div>'+
+      '<div class="field-block"><span class="flabel">Hair colors present</span>'+cbGroup('hairColorsPresent',HAIR_COLORS,s.hairColorsPresent)+'</div>'+
+      '<hr class="section-sep">'+
+      '<div class="field-block"><span class="flabel">BONUS: Did you discuss the following?</span>'+cbGroup('bonusDiscussed',BONUS_DISCUSSED,s.bonusDiscussed)+'</div>'+
+      '<div class="field-block"><label for="sf-adverse">If adverse event experienced: explain what happened and the recommended remedy</label><textarea id="sf-adverse" class="autogrow">'+esc(s.adverseEventNote||'')+'</textarea></div>'+
       '<hr class="section-sep">'+
       '<div class="field-block"><span class="flabel">Body areas worked on</span>'+cbGroup('bodyAreas',BODY_AREAS,s.bodyAreas)+'</div>'+
       '<div class="field-block"><label for="sf-areanote">Body area notes</label><input type="text" id="sf-areanote" value="'+esc(s.bodyAreasNote||'')+'"></div>'+
@@ -1092,6 +1104,8 @@ function openSessionForm(id, prefillDate){
       filamentMaterial:readGroup(scope,'filamentMaterial'), filamentSize:readGroup(scope,'filamentSize'),
       filamentBrand:readGroup(scope,'filamentBrand'),
       levelsUsed:ov.querySelector('#sf-levels').value,
+      hairDensityRemoved:readGroup(scope,'hairDensityRemoved'), hairColorsPresent:readGroup(scope,'hairColorsPresent'),
+      bonusDiscussed:readGroup(scope,'bonusDiscussed'), adverseEventNote:ov.querySelector('#sf-adverse').value,
       bodyAreas:readGroup(scope,'bodyAreas'), bodyAreasNote:ov.querySelector('#sf-areanote').value,
       subjective:ov.querySelector('#sf-s').value, objective:ov.querySelector('#sf-o').value,
       assessment:ov.querySelector('#sf-a').value, plan:ov.querySelector('#sf-p').value,
@@ -1141,6 +1155,10 @@ function renderSessionView(id){
       svItem('Filament size',(s.filamentSize||[]).join(', '))+
       svItem('Filament brand',(s.filamentBrand||[]).join(', '))+
       svItem('Levels used',s.levelsUsed)+
+      svItem('Hair density removed',(s.hairDensityRemoved||[]).join(', '))+
+      svItem('Hair colors present',(s.hairColorsPresent||[]).join(', '))+
+      svItem('BONUS: discussed',(s.bonusDiscussed||[]).join(', '),true)+
+      svItem('Adverse event note',s.adverseEventNote,true)+
       svItem('SOAP submitted',s.soapSubmitted?'Yes':'No')+
       svItem('Body areas',(s.bodyAreas||[]).join(', '),true)+
       svItem('Body area notes',s.bodyAreasNote,true)+
@@ -1178,6 +1196,8 @@ function buildFormUrl(s, includeSoap){
   addMulti(ENTRY.modality, Object.keys(s.modalities||{}).filter(k=>num(s.modalities[k])>0).map(modFormValue));
   addMulti(ENTRY.machine,s.machines); addMulti(ENTRY.megahertz,s.megahertz);
   addMulti(ENTRY.filMaterial,s.filamentMaterial); addMulti(ENTRY.filSize,s.filamentSize); addMulti(ENTRY.filBrand,s.filamentBrand);
+  addMulti(ENTRY.hairDensity,s.hairDensityRemoved); addMulti(ENTRY.hairColors,s.hairColorsPresent);
+  addMulti(ENTRY.bonusDiscussed,s.bonusDiscussed); add(ENTRY.adverseEventNote,s.adverseEventNote);
   add(ENTRY.levels,s.levelsUsed); add(ENTRY.timeSpent,s.timeSpentText);
   if(S.settings.soapEmail) p.unshift('emailAddress='+encodeURIComponent(S.settings.soapEmail));
   const base='https://docs.google.com/forms/d/e/'+(S.settings.formId||DEFAULT_FORM_ID)+'/viewform';
@@ -2112,14 +2132,14 @@ function normalizeDateStr(v){
 }
 
 /* ---- Sessions CSV/TSV ---- */
-const SESSION_CSV_COLS=['date','startTime','endTime','appointmentType','technician','procedures','patientId','modalities','machines','megahertz','filamentMaterial','filamentSize','filamentBrand','levelsUsed','bodyAreas','bodyAreasNote','timeSpentText','soapSubmitted','subjective','objective','assessment','plan','myNotes'];
-const SESSION_CSV_HEADERS={ date:'Date', startTime:'Start Time', endTime:'End Time', appointmentType:'Type', technician:'Technician', procedures:'Procedures', patientId:'Patient ID', modalities:'Modalities', machines:'Machines', megahertz:'MHz', filamentMaterial:'Filament Material', filamentSize:'Filament Size', filamentBrand:'Filament Brand', levelsUsed:'Levels Used', bodyAreas:'Body Areas', bodyAreasNote:'Body Areas Note', timeSpentText:'Time Spent', soapSubmitted:'SOAP Submitted', subjective:'Subjective', objective:'Objective', assessment:'Assessment', plan:'Plan', myNotes:'My Notes' };
+const SESSION_CSV_COLS=['date','startTime','endTime','appointmentType','technician','procedures','patientId','modalities','machines','megahertz','filamentMaterial','filamentSize','filamentBrand','levelsUsed','hairDensityRemoved','hairColorsPresent','bonusDiscussed','adverseEventNote','bodyAreas','bodyAreasNote','timeSpentText','soapSubmitted','subjective','objective','assessment','plan','myNotes'];
+const SESSION_CSV_HEADERS={ date:'Date', startTime:'Start Time', endTime:'End Time', appointmentType:'Type', technician:'Technician', procedures:'Procedures', patientId:'Patient ID', modalities:'Modalities', machines:'Machines', megahertz:'MHz', filamentMaterial:'Filament Material', filamentSize:'Filament Size', filamentBrand:'Filament Brand', levelsUsed:'Levels Used', hairDensityRemoved:'Hair Density Removed', hairColorsPresent:'Hair Colors Present', bonusDiscussed:'Bonus Discussed', adverseEventNote:'Adverse Event Note', bodyAreas:'Body Areas', bodyAreasNote:'Body Areas Note', timeSpentText:'Time Spent', soapSubmitted:'SOAP Submitted', subjective:'Subjective', objective:'Objective', assessment:'Assessment', plan:'Plan', myNotes:'My Notes' };
 // 'procedures' is intentionally left unmapped here — it's a derived count (see sessionProcedures()),
 // driven entirely by modalities, so it's export-only and ignored on import like any unknown column.
-const SESSION_CSV_HEADER_MAP={ 'date':'date', 'start time':'startTime', 'end time':'endTime', 'type':'appointmentType', 'technician':'technician', 'patient id':'patientId', 'modalities':'modalities', 'machines':'machines', 'mhz':'megahertz', 'filament material':'filamentMaterial', 'filament size':'filamentSize', 'filament brand':'filamentBrand', 'levels used':'levelsUsed', 'body areas':'bodyAreas', 'body areas note':'bodyAreasNote', 'time spent':'timeSpentText', 'soap submitted':'soapSubmitted', 'subjective':'subjective', 'objective':'objective', 'assessment':'assessment', 'plan':'plan', 'my notes':'myNotes' };
+const SESSION_CSV_HEADER_MAP={ 'date':'date', 'start time':'startTime', 'end time':'endTime', 'type':'appointmentType', 'technician':'technician', 'patient id':'patientId', 'modalities':'modalities', 'machines':'machines', 'mhz':'megahertz', 'filament material':'filamentMaterial', 'filament size':'filamentSize', 'filament brand':'filamentBrand', 'levels used':'levelsUsed', 'hair density removed':'hairDensityRemoved', 'hair colors present':'hairColorsPresent', 'bonus discussed':'bonusDiscussed', 'adverse event note':'adverseEventNote', 'body areas':'bodyAreas', 'body areas note':'bodyAreasNote', 'time spent':'timeSpentText', 'soap submitted':'soapSubmitted', 'subjective':'subjective', 'objective':'objective', 'assessment':'assessment', 'plan':'plan', 'my notes':'myNotes' };
 const SESSION_CSV_DATE_FIELDS=['date'];
-const SESSION_CSV_LIST_FIELDS=['machines','megahertz','filamentMaterial','filamentSize','filamentBrand','bodyAreas'];
-const SESSION_DEFAULTS={ date:'', startTime:'', endTime:'', appointmentType:'Service', technician:'', patientId:'', subjective:'', objective:'', assessment:'', plan:'', modalities:{}, machines:[], megahertz:[], filamentMaterial:[], filamentSize:[], filamentBrand:[], levelsUsed:'', timeSpentText:'', soapSubmitted:false, bodyAreas:[], bodyAreasNote:'', myNotes:'' };
+const SESSION_CSV_LIST_FIELDS=['machines','megahertz','filamentMaterial','filamentSize','filamentBrand','hairDensityRemoved','hairColorsPresent','bonusDiscussed','bodyAreas'];
+const SESSION_DEFAULTS={ date:'', startTime:'', endTime:'', appointmentType:'Service', technician:'', patientId:'', subjective:'', objective:'', assessment:'', plan:'', modalities:{}, machines:[], megahertz:[], filamentMaterial:[], filamentSize:[], filamentBrand:[], levelsUsed:'', timeSpentText:'', soapSubmitted:false, hairDensityRemoved:[], hairColorsPresent:[], bonusDiscussed:[], adverseEventNote:'', bodyAreas:[], bodyAreasNote:'', myNotes:'' };
 function sessionsToRows(){
   const rows=[SESSION_CSV_COLS.map(c=>SESSION_CSV_HEADERS[c])];
   S.sessions.slice().sort((a,b)=>sessionOrder(a).localeCompare(sessionOrder(b))).forEach(s=>{
