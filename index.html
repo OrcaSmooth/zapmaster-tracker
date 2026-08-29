@@ -76,8 +76,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .hint{font-size:11px;color:var(--muted)}
 .cbgrid{display:flex;flex-wrap:wrap;gap:6px 16px}
 .cbgrid.tight{gap:5px 12px}
-.cbitem{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text);white-space:nowrap}
-.cbitem input{width:15px;height:15px;accent-color:var(--primary)}
+.cbitem{display:flex;align-items:flex-start;gap:6px;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text);white-space:normal;max-width:100%}
+.cbitem input{width:15px;height:15px;accent-color:var(--primary);margin-top:2px;flex-shrink:0}
 .mod-row{display:flex;align-items:center;gap:10px;padding:5px 0}
 .mod-row label{flex:1;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);font-size:13px}
 .mod-row input{width:76px}
@@ -948,8 +948,9 @@ function openSoapForm(id){
   const ov=openModal(
     '<div class="modal-head">SOAP status — '+esc(fmtDate(s.date))+'<button class="x" data-c>&times;</button></div>'+
     '<div class="modal-body"><label class="cbitem"><input type="checkbox" id="soap-cb"'+(s.soapSubmitted?' checked':'')+'> SOAP submitted</label></div>'+
-    '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="soap-save">Save</button></div>','sm');
+    '<div class="modal-foot"><button class="btn btn-a" id="soap-form">Submit to Google Form ↗</button><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="soap-save">Save</button></div>','sm');
   ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  ov.querySelector('#soap-form').onclick=()=>openFormLink(s);
   ov.querySelector('#soap-save').onclick=()=>{
     s.soapSubmitted=ov.querySelector('#soap-cb').checked;
     persist(); closeModal(); renderSessions();
