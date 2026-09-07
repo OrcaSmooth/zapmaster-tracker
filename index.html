@@ -2303,14 +2303,75 @@ function openImportConflictModal(config, incoming, existingByKey){
     alert('Import complete — '+added+' added, '+updated+' updated, '+skipped+' skipped.');
   };
 }
+/* ---- Full-backup import: diff current data vs. the incoming file before applying ---- */
+function diffById(currentList, incomingList, fields){
+  const byId={}; currentList.forEach(r=>{ if(r.id) byId[r.id]=r; });
+  const incomingIds={};
+  const added=[], changed=[];
+  incomingList.forEach(r=>{
+    if(r.id) incomingIds[r.id]=true;
+    const existing=r.id?byId[r.id]:null;
+    if(!existing){ added.push(r); return; }
+    const diffFields=fields.filter(f=>JSON.stringify(existing[f])!==JSON.stringify(r[f]));
+    if(diffFields.length) changed.push({existing,incoming:r,fields:diffFields});
+  });
+  const removed=currentList.filter(r=>r.id && !incomingIds[r.id]);
+  return {added,changed,removed};
+}
+function diffImportData(data){
+  const sessions=diffById(S.sessions, Array.isArray(data.sessions)?data.sessions:[], Object.keys(SESSION_DEFAULTS));
+  const assignments=diffById(S.assignments, Array.isArray(data.assignments)?data.assignments:[], Object.keys(ASSIGNMENT_DEFAULTS));
+  const mergedSettings=Object.assign(defaultSettings(),data.settings||{});
+  normalizeSettings(mergedSettings);
+  const settingsChangedKeys=data.settings?Object.keys(mergedSettings).filter(k=>JSON.stringify(S.settings[k])!==JSON.stringify(mergedSettings[k])):[];
+  const calendarChanged=!!data.calendar && JSON.stringify(S.calendar||{})!==JSON.stringify(data.calendar);
+  return {sessions,assignments,settingsChangedKeys,calendarChanged};
+}
+function openImportPreviewModal(data, diff){
+  return new Promise(res=>{
+    const {sessions,assignments,settingsChangedKeys,calendarChanged}=diff;
+    const totalChanges=sessions.added.length+sessions.changed.length+sessions.removed.length
+      +assignments.added.length+assignments.changed.length+assignments.removed.length
+      +settingsChangedKeys.length+(calendarChanged?1:0);
+    const versionWarning=(data.schemaVersion && data.schemaVersion>DATA_SCHEMA_VERSION)
+      ?'<p class="hint" style="text-transform:none;letter-spacing:0;color:var(--danger,#b5651d)">This backup was made with a newer version of Zapmaster Tracker (data schema v'+esc(data.schemaVersion)+', this app supports v'+DATA_SCHEMA_VERSION+'). Some fields may not be recognized.</p>'
+      :'';
+    if(!totalChanges){
+      const ov=openModal(
+        '<div class="modal-head">Review import<button class="x" data-c>&times;</button></div>'+
+        '<div class="modal-body">'+versionWarning+'<p class="hint" style="text-transform:none;letter-spacing:0">No changes detected — the imported file matches your current data.</p></div>'+
+        '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" data-ok>Import anyway</button></div>','sm'
+      );
+      ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{closeModal();res(false);});
+      ov.querySelector('[data-ok]').onclick=()=>{closeModal();res(true);};
+      return;
+    }
+    const listSection=(title,items,fmt)=>items.length?('<div style="margin-bottom:10px"><div style="font-weight:600;margin-bottom:4px">'+esc(title)+' ('+items.length+')</div>'+
+      items.map(it=>'<div class="hint" style="text-transform:none;letter-spacing:0">'+esc(fmt(it))+'</div>').join('')+'</div>'):'';
+    const body=versionWarning+
+      '<p class="hint" style="margin-bottom:12px;text-transform:none;letter-spacing:0">Importing this file will make the following changes. Review before continuing.</p>'+
+      listSection('Sessions to add', sessions.added, r=>IMPORT_CONFIGS.sessions.describe(r))+
+      listSection('Sessions to update', sessions.changed, c=>IMPORT_CONFIGS.sessions.describe(c.incoming)+' — '+c.fields.join(', ')+' changed')+
+      listSection('Sessions to remove', sessions.removed, r=>IMPORT_CONFIGS.sessions.describe(r))+
+      listSection('Assignments to add', assignments.added, r=>IMPORT_CONFIGS.assignments.describe(r))+
+      listSection('Assignments to update', assignments.changed, c=>IMPORT_CONFIGS.assignments.describe(c.incoming)+' — '+c.fields.join(', ')+' changed')+
+      listSection('Assignments to remove', assignments.removed, r=>IMPORT_CONFIGS.assignments.describe(r))+
+      (settingsChangedKeys.length?'<div class="hint" style="text-transform:none;letter-spacing:0;margin-bottom:6px">Settings: '+settingsChangedKeys.length+' field'+(settingsChangedKeys.length>1?'s':'')+' changed ('+settingsChangedKeys.join(', ')+')</div>':'')+
+      (calendarChanged?'<div class="hint" style="text-transform:none;letter-spacing:0">Calendar data will change.</div>':'');
+    const ov=openModal(
+      '<div class="modal-head">Review import<button class="x" data-c>&times;</button></div>'+
+      '<div class="modal-body" style="max-height:60vh;overflow:auto">'+body+'</div>'+
+      '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" data-ok>Import</button></div>'
+    );
+    ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{closeModal();res(false);});
+    ov.querySelector('[data-ok]').onclick=()=>{closeModal();res(true);};
+  });
+}
 let pendingImportTarget=null, pendingImportFormat=null; // set by a page's Import-menu item, consumed by #file-import-csv's change handler
 function startCsvImport(target, format){ pendingImportTarget=target; pendingImportFormat=format; document.getElementById('file-import-csv').click(); }
 let importHandler=null; // optional one-shot handler for the next file selection
 function importJSON(handler){ importHandler=handler||null; document.getElementById('file-import').click(); }
 function applyImport(data){
-  if(data.schemaVersion && data.schemaVersion>DATA_SCHEMA_VERSION){
-    alert('This backup was made with a newer version of Zapmaster Tracker (data schema v'+data.schemaVersion+', this app supports v'+DATA_SCHEMA_VERSION+'). It will still be imported, but some fields may not be recognized.');
-  }
   if(data.settings) S.settings=Object.assign(defaultSettings(),data.settings);
   if(Array.isArray(data.sessions)) S.sessions=data.sessions;
   if(data.calendar&&typeof data.calendar==='object') S.calendar=data.calendar;
@@ -2322,13 +2383,16 @@ function readImport(file){ return new Promise((res,rej)=>{ const rd=new FileRead
 async function handleImportFile(file){
   try{
     const data=await readImport(file);
-    if(!await confirmDialog('Import backup','<p>This will <b>replace</b> all current settings, sessions, and calendar data with the imported file. Continue?</p>','Replace data')) return;
+    if(!await openImportPreviewModal(data, diffImportData(data))) return;
     applyImport(data); navTo(NAV_VIEWS.includes(S.view)?S.view:'sessions'); // imported session may no longer exist
   }catch(e){ alert('Could not import file: '+e.message); }
 }
 async function onboardImport(file){
   try{
     const data=await readImport(file);
+    if(data.schemaVersion && data.schemaVersion>DATA_SCHEMA_VERSION){
+      alert('This backup was made with a newer version of Zapmaster Tracker (data schema v'+data.schemaVersion+', this app supports v'+DATA_SCHEMA_VERSION+'). It will still be imported, but some fields may not be recognized.');
+    }
     applyImport(data); closeModal(); navTo('sessions');
   }catch(e){ alert('Could not import file: '+e.message); }
 }
