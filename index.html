@@ -168,6 +168,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .dt-in{background:#fff;border:1px dashed var(--accent);border-top:3px solid var(--accent)}
 .dt-out{background:repeating-linear-gradient(45deg,#f0f2f2,#f0f2f2 6px,#e6eaea 6px,#e6eaea 12px);color:var(--muted)}
 .dt-partial{background:var(--positive-bg);border-top:3px solid var(--positive)}
+.dt-missed{background:var(--negative-bg);border:1px solid var(--negative);border-top:3px solid var(--negative)}
 .cwarn{margin-left:4px}
 #legend-tip{position:fixed;z-index:600;pointer-events:none;background:rgba(20,30,30,.92);color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:5px;white-space:nowrap;display:none}
 .cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;font-size:11px;color:var(--muted)}
@@ -411,6 +412,7 @@ function fmtTimeRange(s){ const a=fmtTime(s.startTime),b=fmtTime(s.endTime); ret
 // comparable chronological key: real start instant when known, else the service date at midnight
 function sessionOrder(s){ return s.startTime||((s.date||'')+'T00:00:00.000Z'); }
 function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function hoursLogged(v){ return v!==''&&v!=null; }
 function autoGrow(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 
@@ -1218,10 +1220,11 @@ async function openFormLink(s){
 function calKey(y,m,d){ return y+'-'+pad2(m)+'-'+pad2(d); }
 function dayType(iso, dow, entry){
   const sh=num(entry&&entry.servedHours), ph=num(entry&&entry.plannedHours);
-  const served=sh>0, planned=ph>0;
+  const servedLogged=hoursLogged(entry&&entry.servedHours), planned=ph>0;
   const status=(entry&&entry.status)||'default';
-  if(served&&planned&&sh<ph) return 'partial';
-  if(served) return 'completed';
+  if(servedLogged&&sh===0&&planned) return 'missed';
+  if(servedLogged&&sh>0&&planned&&sh<ph) return 'partial';
+  if(servedLogged&&sh>0) return 'completed';
   if(planned) return 'planned';
   if(status==='school-out') return 'out';
   if(status==='school-in') return 'in';
@@ -1255,7 +1258,7 @@ function renderCalendar(){
     const planned=num(entry&&entry.plannedHours), served=num(entry&&entry.servedHours);
     let badges='';
     if(planned) badges+='<div class="cbadge">Plan: <b>'+planned+'h</b></div>';
-    if(served) badges+='<div class="cbadge">Served: <b>'+served+'h</b>'+(dt==='partial'?'<span class="cwarn" title="Served hours below plan">⚠</span>':'')+'</div>';
+    if(hoursLogged(entry&&entry.servedHours)) badges+='<div class="cbadge">Served: <b>'+served+'h</b>'+(dt==='partial'?'<span class="cwarn" title="Served hours below plan">⚠</span>':'')+'</div>';
     cells+='<div class="cal-cell dt-'+dt+(iso===today?' today':'')+'" data-day="'+iso+'"'+(entry&&entry.note?' data-note="'+esc(entry.note)+'"':'')+'>'+
       '<div class="cal-daynum-row"><div class="cal-daynum">'+d+'</div>'+
       (soapNeededOnDate(iso)?'<div class="csoap" title="SOAP note needed">🧼</div>':'')+
@@ -1281,6 +1284,7 @@ function renderCalendar(){
         '<span class="leg"><span class="sw dt-weekend"></span>Non-school / weekend</span>'+
         '<span class="leg"><span class="sw dt-planned"></span>Planned — needs served hours</span>'+
         '<span class="leg"><span class="sw dt-completed"></span>Completed (served)</span>'+
+        '<span class="leg"><span class="sw dt-missed"></span>Missed — planned but not performed</span>'+
         '<span class="leg"><span class="sw dt-in"></span>School in (override)</span>'+
         '<span class="leg"><span class="sw dt-out"></span>School out (override)</span>'+
         '<span class="leg"><span class="csoap">🧼</span>SOAP note needed</span>'+
@@ -1331,9 +1335,10 @@ function openDayForm(iso){
   ov.querySelectorAll('[data-sess]').forEach(b=>b.onclick=()=>{ closeModal(); navTo('session/'+b.dataset.sess); });
   ov.querySelector('#d-clear').onclick=()=>{ delete S.calendar[iso]; persist(); closeModal(); if(S.view==='day') navTo('day/'+iso); else renderCalendar(); };
   ov.querySelector('#d-save').onclick=()=>{
-    const rec={ plannedHours:num(ov.querySelector('#d-plan').value)||'', servedHours:num(ov.querySelector('#d-serv').value)||'',
+    const planRaw=ov.querySelector('#d-plan').value, servRaw=ov.querySelector('#d-serv').value;
+    const rec={ plannedHours:planRaw===''?'':num(planRaw), servedHours:servRaw===''?'':num(servRaw),
       status:ov.querySelector('#d-status').value, note:ov.querySelector('#d-note').value.trim() };
-    if(!rec.plannedHours && !rec.servedHours && rec.status==='default' && !rec.note) delete S.calendar[iso];
+    if(!hoursLogged(rec.plannedHours) && !hoursLogged(rec.servedHours) && rec.status==='default' && !rec.note) delete S.calendar[iso];
     else S.calendar[iso]=rec;
     persist(); closeModal(); if(S.view==='day') navTo('day/'+iso); else renderCalendar();
   };
@@ -1410,14 +1415,15 @@ function renderDayView(iso){
   const prevISO=prevSchoolDay(iso);
   const nextISO=nextSchoolDay(iso);
   const ph=num(entry.plannedHours), sh=num(entry.servedHours);
+  const phLogged=hoursLogged(entry.plannedHours), shLogged=hoursLogged(entry.servedHours);
   const statusLabel={'default':'Default','school-in':'School in (override)','school-out':'School out (override)'}[entry.status||'default']||entry.status;
   const summaryHtml=
     '<div class="dv-summary">'+
     '<div class="panel"><div class="ph">Day Summary '+
       '<span class="no-print"><button class="btn btn-g btn-sm" id="dv-edit">Edit Day</button></span>'+
     '</div><div class="pb"><div class="sv-grid">'+
-      '<div class="sv-item"><div class="k">Planned hours</div><div class="v">'+(ph?fmtHrs(ph):DASH)+'</div></div>'+
-      '<div class="sv-item"><div class="k">Served hours</div><div class="v">'+(sh?fmtHrs(sh):DASH)+'</div></div>'+
+      '<div class="sv-item"><div class="k">Planned hours</div><div class="v">'+(phLogged?fmtHrs(ph):DASH)+'</div></div>'+
+      '<div class="sv-item"><div class="k">Served hours</div><div class="v">'+(shLogged?fmtHrs(sh):DASH)+'</div></div>'+
       '<div class="sv-item"><div class="k">Status</div><div class="v">'+esc(statusLabel)+'</div></div>'+
       '<div class="sv-item"><div class="k">Sessions</div><div class="v">'+daySessions.length+'</div></div>'+
       (entry.note?'<div class="sv-item full"><div class="k">Note</div><div class="v">'+esc(entry.note)+'</div></div>':'')+
@@ -1533,7 +1539,7 @@ function renderReports(){
 
   // pace
   const t0=todayISO();
-  const remDays=Object.entries(S.calendar).filter(([iso,e])=>iso>=t0 && num(e.plannedHours)>0 && !(num(e.servedHours)>0));
+  const remDays=Object.entries(S.calendar).filter(([iso,e])=>iso>=t0 && num(e.plannedHours)>0 && !hoursLogged(e.servedHours));
   const remSchoolDays=remDays.length;
   const remPlannedHours=remDays.reduce((a,[,e])=>a+num(e.plannedHours),0);
   const lastRemIso=remDays.map(([iso])=>iso).sort().pop();
@@ -1544,7 +1550,7 @@ function renderReports(){
   let estPerformedHours=0;
   Object.entries(S.calendar).forEach(([iso,e])=>{
     const served=num(e.servedHours), planned=num(e.plannedHours);
-    if(served>0) estPerformedHours+=served;
+    if(hoursLogged(e.servedHours)) estPerformedHours+=served;
     else if(planned>0 && iso<t0) estPerformedHours+=planned;
   });
   const estHrsStr=fmtHrs(estPerformedHours);
@@ -1555,7 +1561,7 @@ function renderReports(){
   const hrsPerDay=(remSchoolDays>0&&hoursNeeded>0)?+((hoursNeeded-estPerformedHours)/remSchoolDays).toFixed(1):null;
 
   // outstanding tracking: past planned days missing served hours, and sessions missing SOAP
-  const hourDays=Object.keys(S.calendar).filter(iso=>iso<t0 && num(S.calendar[iso].plannedHours)>0 && !(num(S.calendar[iso].servedHours)>0)).sort();
+  const hourDays=Object.keys(S.calendar).filter(iso=>iso<t0 && num(S.calendar[iso].plannedHours)>0 && !hoursLogged(S.calendar[iso].servedHours)).sort();
   const soapNeeded=S.sessions.filter(s=>!s.soapSubmitted && !futureSession(s)).length;
 
   // assignments remaining: not yet submitted, earliest due date first
