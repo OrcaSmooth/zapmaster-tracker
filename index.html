@@ -46,9 +46,9 @@ a{color:var(--primary-lt)}
 nav#tabs{display:flex;justify-content:space-between;align-items:stretch;padding:0 12px}
 .tabs-primary,.tabs-secondary{display:flex;gap:2px}
 .tabs-secondary{border-left:1px solid rgba(255,255,255,.15);padding-left:10px;margin-left:8px}
-nav#tabs button{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--accent-lt);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
-nav#tabs button:hover{color:#fff}
-nav#tabs button.active{color:#fff;border-bottom-color:var(--warn-border)}
+nav#tabs button,nav#tabs a{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--accent-lt);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+nav#tabs button:hover,nav#tabs a:hover{color:#fff}
+nav#tabs button.active,nav#tabs a.active{color:#fff;border-bottom-color:var(--warn-border)}
 /* MAIN */
 #main{max-width:1180px;margin:0 auto;padding:18px}
 .view{display:none}
@@ -83,7 +83,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .mod-row input{width:76px}
 .mod-total{margin-top:8px;font-weight:700;color:var(--primary-dk)}
 /* BUTTONS */
-.btn{padding:7px 15px;border-radius:5px;border:none;cursor:pointer;font-size:13px;font-weight:600}
+.btn{padding:7px 15px;border-radius:5px;border:none;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-block}
 .btn:hover{filter:brightness(1.07)}
 .btn-p{background:var(--primary);color:#fff}
 .btn-a{background:var(--accent);color:#fff}
@@ -148,7 +148,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .cal-nav{display:flex;gap:6px}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .cal-dow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:center;padding:4px 0}
-.cal-cell{min-height:92px;border:1px solid var(--border);border-radius:7px;padding:6px;position:relative;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:box-shadow .12s}
+.cal-cell{min-height:92px;border:1px solid var(--border);border-radius:7px;padding:6px;position:relative;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:box-shadow .12s;text-decoration:none;color:inherit}
 .cal-cell:hover{box-shadow:0 0 0 2px var(--accent) inset}
 .cal-cell.out{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
 .cal-daynum-row{display:flex;align-items:center;gap:4px}
@@ -201,7 +201,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .mini-cal{min-width:200px}
 .mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
 .mini-cal-dow{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;padding:2px 0}
-.mini-cal-cell{font-size:11px;font-weight:600;text-align:center;padding:4px 2px;border-radius:4px;cursor:pointer;color:var(--text)}
+.mini-cal-cell{font-size:11px;font-weight:600;text-align:center;padding:4px 2px;border-radius:4px;cursor:pointer;color:var(--text);text-decoration:none;display:block}
 .mini-cal-cell:hover{background:var(--accent-lt)}
 .mini-cal-cell.mc-out{cursor:default;pointer-events:none;color:transparent}
 .mini-cal-cell.mc-green{background:var(--positive-bg);color:var(--positive)}
@@ -247,15 +247,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
   </div>
   <nav id="tabs">
     <div class="tabs-primary">
-      <button data-nav="reports">Reports</button>
-      <button data-nav="calendar">Calendar</button>
-      <button data-nav="sessions">Sessions</button>
-      <button data-nav="patients">Patients</button>
-      <button data-nav="assignments">Assignments</button>
+      <a data-nav="reports" href="#/reports">Reports</a>
+      <a data-nav="calendar" href="#/calendar">Calendar</a>
+      <a data-nav="sessions" href="#/sessions">Sessions</a>
+      <a data-nav="patients" href="#/patients">Patients</a>
+      <a data-nav="assignments" href="#/assignments">Assignments</a>
     </div>
     <div class="tabs-secondary">
-      <button data-nav="settings">Settings</button>
-      <button data-nav="about">About</button>
+      <a data-nav="settings" href="#/settings">Settings</a>
+      <a data-nav="about" href="#/about">About</a>
     </div>
   </nav>
 </header>
@@ -507,7 +507,7 @@ function showView(name){
   S.view=name;
   if(NAV_VIEWS.includes(name)) save(K.view, name); // remember the active tab across page refreshes
   if(name!=='reports') destroyCharts(); // release Chart.js instances + their ResizeObservers when leaving Reports
-  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.nav===name));
+  document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active', b.dataset.nav===name));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const map={ reports:renderReports, calendar:renderCalendar, sessions:renderSessions, patients:renderPatients, assignments:renderAssignments, settings:renderSettings, about:renderAbout };
   if(map[name]){ document.getElementById('view-'+name).classList.add('active'); map[name](); }
@@ -644,7 +644,7 @@ function renderSessions(){
   } else {
     body='<div class="tbl-wrap"><table class="tbl"><thead>'+
       '<tr>'+
-        '<th rowspan="2">SOAP</th><th rowspan="2">Patient</th><th rowspan="2">Date</th><th rowspan="2">Time</th><th rowspan="2">Type</th><th rowspan="2">Proc.</th><th rowspan="2">Modalities</th><th rowspan="2">Machines</th>'+
+        '<th rowspan="2">SOAP</th><th rowspan="2">Patient</th><th rowspan="2">Date</th><th rowspan="2">Time</th><th rowspan="2">Type</th><th rowspan="2">Proc.</th><th rowspan="2">Modalities</th><th rowspan="2">Machines</th><th rowspan="2">Body Areas</th>'+
         '<th colspan="3" style="text-align:center">Filament</th>'+
         '<th rowspan="2"></th>'+
       '</tr>'+
@@ -664,10 +664,11 @@ function renderSessions(){
           '<td>'+sessionProcedures(s)+'</td>'+
           '<td>'+(modLines||DASH)+'</td>'+
           '<td>'+cell(s.machines)+'</td>'+
+          '<td>'+cell(s.bodyAreas)+'</td>'+
           '<td>'+cell(mat)+'</td>'+
           '<td>'+cell(s.filamentSize)+'</td>'+
           '<td>'+cell(s.filamentBrand)+'</td>'+
-          '<td><span style="display:flex;gap:6px"><button class="btn btn-a btn-sm" data-view="'+s.id+'">View</button><button class="btn btn-g btn-sm" data-edit="'+s.id+'">Edit</button></span></td>'+
+          '<td><span style="display:flex;gap:6px"><a class="btn btn-a btn-sm" href="#/session/'+esc(s.id)+'">View</a><button class="btn btn-g btn-sm" data-edit="'+s.id+'">Edit</button></span></td>'+
         '</tr>';
       }).join('')+
       '</tbody></table></div>';
@@ -688,7 +689,6 @@ function renderSessions(){
   v.querySelector('#sessions-export-tsv').onclick=()=>exportSessionsTSV();
   v.querySelector('#sessions-import-csv').onclick=()=>startCsvImport('sessions','csv');
   v.querySelector('#sessions-import-tsv').onclick=()=>startCsvImport('sessions','tsv');
-  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ navTo('session/'+b.dataset.view); });
   v.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{ openSessionForm(b.dataset.edit); });
   v.querySelectorAll('[data-soap]').forEach(b=>b.onclick=()=>openSoapForm(b.dataset.soap));
 }
@@ -748,14 +748,12 @@ function renderPatients(){
           '<td>'+p.procedureCount+'</td>'+
           '<td>'+(p.soapNeeded?'<span class="soap-flag" title="SOAP not submitted">'+p.soapNeeded+'</span>':'0')+'</td>'+
           '<td>'+(p.lastDate?esc(fmtDate(p.lastDate)):DASH)+'</td>'+
-          '<td><button class="btn btn-a btn-sm" data-view="'+esc(p.pid)+'">View</button></td>'+
+          '<td><a class="btn btn-a btn-sm" href="#/patient/'+esc(p.pid)+'">View</a></td>'+
         '</tr>'
       ).join('')+
       '</tbody></table></div>';
   }
   v.innerHTML='<div class="page-title">Patients</div><div class="panel"><div class="pb">'+body+'</div></div>';
-  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navTo('patient/'+b.dataset.view));
-  v.querySelectorAll('tbody tr').forEach((tr,i)=>{ tr.style.cursor='pointer'; tr.onclick=(e)=>{ if(e.target.closest('button')) return; navTo('patient/'+patients[i].pid); }; });
 }
 function renderPatientView(pid){
   const sess=S.sessions.filter(s=>s.patientId===pid);
@@ -775,12 +773,12 @@ function renderPatientView(pid){
       '<td>'+apptPill(s.appointmentType)+'</td>'+
       '<td>'+sessionProcedures(s)+'</td>'+
       '<td>'+(modLines||DASH)+'</td>'+
-      '<td><button class="btn btn-a btn-sm" data-view="'+s.id+'">View</button></td>'+
+      '<td><a class="btn btn-a btn-sm" href="#/session/'+esc(s.id)+'">View</a></td>'+
     '</tr>';
   }).join('');
   v.innerHTML=
     '<div class="page-title"><span style="display:flex;align-items:center;gap:10px">'+patientIdSVG(pid,32)+'Patient — '+esc(pid)+'</span>'+
-      '<span style="display:flex;gap:8px"><button class="btn btn-g" id="pv-rename">Rename Patient…</button><button class="btn btn-g" id="pv-back">← Back</button></span></div>'+
+      '<span style="display:flex;gap:8px"><button class="btn btn-g" id="pv-rename">Rename Patient…</button><a class="btn btn-g" href="#/patients">← Back</a></span></div>'+
     '<div class="panel"><div class="pb"><div class="sv-grid">'+
       svItem('Sessions',String(p.sessionCount))+
       svItem('Procedures',String(p.procedureCount))+
@@ -793,10 +791,8 @@ function renderPatientView(pid){
       '</tr></thead><tbody>'+tableBody+'</tbody></table></div></div></div>';
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   v.classList.add('active');
-  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='patients'));
-  v.querySelector('#pv-back').onclick=()=>navTo('patients');
+  document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='patients'));
   v.querySelector('#pv-rename').onclick=()=>openRenamePatientModal(pid);
-  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navTo('session/'+b.dataset.view));
 }
 
 // Rename a patient identifier across every session that carries it. Requires the old
@@ -900,7 +896,7 @@ function openFilterForm(){
           '<div class="fg wide"><label for="ff-pid-name">Patient name</label><input type="text" id="ff-pid-name" placeholder="Full name"></div>'+
           '<div class="fg wide"><label for="ff-pid-salt">Salt / secret phrase</label>'+saltFieldHTML('ff-pid-salt','Your shared phrase')+'</div>'+
         '</div>'+
-        '<button class="btn btn-g btn-sm" id="ff-pid-gen" type="button">Generate &amp; Apply</button>'+
+        '<button class="btn btn-g btn-sm" id="ff-pid-gen" type="button">Generate</button>'+
       '</div>'+
     '</div>'+
     '<div class="modal-foot"><button class="btn btn-g" id="ff-clear">Clear all</button><span style="flex:1"></span><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="ff-apply">Apply filter</button></div>'
@@ -927,8 +923,7 @@ function openFilterForm(){
     if(!name){ alert('Enter a patient name to generate an ID.'); return; }
     const id=await patientIdFromName(name,salt);
     if(!id) return;
-    S.sessionFilter=Object.assign(readFilterFields(),{patientId:id});
-    closeModal(); renderSessions();
+    ov.querySelector('#ff-pid').value=id;
   };
 }
 function apptPill(t){
@@ -1139,13 +1134,13 @@ function renderSessionView(id){
         (s.soapSubmitted
           ? '<span class="pill pill-service" title="SOAP already submitted">SOAP submitted ✓</span>'
           : '<button class="btn btn-p" id="sv-form">Submit to Google Form ↗</button>')+
-        '<button class="btn btn-g" id="sv-back">← Back</button>'+
+        '<a class="btn btn-g" href="#/sessions">← Back</a>'+
         '<button class="btn btn-g" id="sv-print">Print</button>'+
         '<button class="btn btn-d" id="sv-del">Delete</button>'+
         '<button class="btn btn-a" id="sv-edit">Edit</button>'+
       '</span></div>'+
     '<div class="panel"><div class="pb"><div class="sv-grid">'+
-      '<div class="sv-item"><div class="k">Date of Service</div><div class="v"><button class="link-btn" id="sv-day">'+esc(fmtDate(s.date))+'</button></div></div>'+
+      '<div class="sv-item"><div class="k">Date of Service</div><div class="v"><a class="link-btn" href="#/day/'+esc(s.date)+'">'+esc(fmtDate(s.date))+'</a></div></div>'+
       (s.patientId?'<div class="sv-item"><div class="k">Patient ID</div><div class="v"><div style="display:flex;align-items:center;gap:8px">'+patientIdSVG(s.patientId,36)+'<span class="pid-badge" style="font-size:14px">'+esc(s.patientId)+'</span></div></div></div>':'')+
       svItem('Appointment time (Pacific)',fmtTimeRange(s))+
       svItem('Type of Appointment',s.appointmentType)+
@@ -1174,9 +1169,7 @@ function renderSessionView(id){
     '</div></div></div>';
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   v.classList.add('active');
-  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='sessions'));
-  v.querySelector('#sv-day').onclick=()=>navTo('day/'+s.date);
-  v.querySelector('#sv-back').onclick=()=>navTo('sessions');
+  document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='sessions'));
   v.querySelector('#sv-print').onclick=()=>window.print();
   v.querySelector('#sv-edit').onclick=()=>openSessionForm(s.id);
   const svForm=v.querySelector('#sv-form'); if(svForm) svForm.onclick=()=>openFormLink(s);
@@ -1259,14 +1252,14 @@ function renderCalendar(){
     let badges='';
     if(planned) badges+='<div class="cbadge">Plan: <b>'+planned+'h</b></div>';
     if(hoursLogged(entry&&entry.servedHours)) badges+='<div class="cbadge">Served: <b>'+served+'h</b>'+(dt==='partial'?'<span class="cwarn" title="Served hours below plan">⚠</span>':'')+'</div>';
-    cells+='<div class="cal-cell dt-'+dt+(iso===today?' today':'')+'" data-day="'+iso+'"'+(entry&&entry.note?' data-note="'+esc(entry.note)+'"':'')+'>'+
+    cells+='<a class="cal-cell dt-'+dt+(iso===today?' today':'')+'" href="#/day/'+iso+'"'+(entry&&entry.note?' data-note="'+esc(entry.note)+'"':'')+'>'+
       '<div class="cal-daynum-row"><div class="cal-daynum">'+d+'</div>'+
       (soapNeededOnDate(iso)?'<div class="csoap" title="SOAP note needed">🧼</div>':'')+
       '</div>'+
       '<button class="cal-edit-btn no-print" data-edit-day="'+iso+'" title="Edit day">✏</button>'+
       (entry&&entry.note?'<div class="cnote" title="'+esc(entry.note)+'"></div>':'')+
       '<div class="cal-badges">'+(proc>0?'<span class="cproc">'+proc+' proc</span>':'')+badges+'</div>'+
-    '</div>';
+    '</a>';
   }
 
   v.innerHTML=
@@ -1294,8 +1287,7 @@ function renderCalendar(){
   v.querySelector('#cal-prev').onclick=()=>{ if(atStart)return; S.calMonth=new Date(y,m-1,1); renderCalendar(); };
   v.querySelector('#cal-next').onclick=()=>{ S.calMonth=new Date(y,m+1,1); renderCalendar(); };
   v.querySelector('#cal-today').onclick=()=>{ const n=new Date(); S.calMonth=new Date(n.getFullYear(),n.getMonth(),1); renderCalendar(); };
-  v.querySelectorAll('[data-day]').forEach(c=>c.onclick=()=>navTo('day/'+c.dataset.day));
-  v.querySelectorAll('[data-edit-day]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); openDayForm(b.dataset.editDay); });
+  v.querySelectorAll('[data-edit-day]').forEach(b=>b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); openDayForm(b.dataset.editDay); });
   const grid=v.querySelector('.cal-grid');
   grid.addEventListener('mousemove',e=>{
     const cell=e.target.closest('[data-note]');
@@ -1313,7 +1305,7 @@ function openDayForm(iso){
     ? '<div class="field-block"><span class="flabel">Sessions this day ('+proceduresOnDate(iso)+' procedures)</span>'+
         daySessions.map(s=>{
           const mods=Object.entries(s.modalities||{}).filter(([,c])=>num(c)>0).map(([k,c])=>esc(shortMod(k))+' ('+c+')').join(', ');
-          return '<div class="mod-row"><span style="flex:1">'+apptPill(s.appointmentType)+' '+(mods||DASH)+' · '+sessionProcedures(s)+' proc'+(s.soapSubmitted?' · <span class="tick">SOAP ✓</span>':'')+'</span><button class="btn btn-a btn-sm" data-sess="'+s.id+'">View</button></div>';
+          return '<div class="mod-row"><span style="flex:1">'+apptPill(s.appointmentType)+' '+(mods||DASH)+' · '+sessionProcedures(s)+' proc'+(s.soapSubmitted?' · <span class="tick">SOAP ✓</span>':'')+'</span><a class="btn btn-a btn-sm" data-sess="'+s.id+'" href="#/session/'+esc(s.id)+'">View</a></div>';
         }).join('')+'</div>'
     : '<div class="hint">No sessions logged this day. Add them on the Sessions tab.</div>';
   const ov=openModal(
@@ -1332,7 +1324,7 @@ function openDayForm(iso){
     '<div class="modal-foot"><button class="btn btn-d" id="d-clear">Clear day</button><span style="flex:1"></span><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="d-save">Save</button></div>'
   );
   ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
-  ov.querySelectorAll('[data-sess]').forEach(b=>b.onclick=()=>{ closeModal(); navTo('session/'+b.dataset.sess); });
+  ov.querySelectorAll('[data-sess]').forEach(b=>b.onclick=closeModal);
   ov.querySelector('#d-clear').onclick=()=>{ delete S.calendar[iso]; persist(); closeModal(); if(S.view==='day') navTo('day/'+iso); else renderCalendar(); };
   ov.querySelector('#d-save').onclick=()=>{
     const planRaw=ov.querySelector('#d-plan').value, servRaw=ov.querySelector('#d-serv').value;
@@ -1386,7 +1378,7 @@ function buildMiniCalendar(selectedISO, viewISO){
       dt==='weekend'?'mc-weekend':'',
       dISO===selectedISO?'mc-selected':''
     ].filter(Boolean).join(' ');
-    cells+='<div class="'+cls+'" data-goto="'+dISO+'">'+day+'</div>';
+    cells+='<a class="'+cls+'" href="#/day/'+dISO+'">'+day+'</a>';
   }
   const trailing=42-(startDow+daysIn);
   for(let i=0;i<trailing;i++) cells+='<div class="mini-cal-cell mc-out">&nbsp;</div>';
@@ -1455,7 +1447,7 @@ function renderDayView(iso){
             (areas?'<div>Areas: '+esc(areas)+'</div>':'')+
             (s.myNotes?'<div>Note: '+esc(s.myNotes)+'</div>':'')+
           '</div>'+
-          '<div style="margin-top:8px"><button class="btn btn-a btn-sm" data-sess="'+s.id+'">View session</button>'+
+          '<div style="margin-top:8px"><a class="btn btn-a btn-sm" href="#/session/'+esc(s.id)+'">View session</a>'+
           ' <button class="btn btn-g btn-sm" data-edit-sess="'+s.id+'">Edit</button></div>'+
         '</div>';
       }).join('');
@@ -1463,7 +1455,7 @@ function renderDayView(iso){
   v.innerHTML=
     '<div class="page-title"><span>'+esc(fmtDate(iso))+'</span>'+
       '<span class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
-        '<button class="btn btn-g" id="dv-back">← Calendar</button>'+
+        '<a class="btn btn-g" href="#/calendar">← Calendar</a>'+
         '<button class="btn btn-g" id="dv-prev"'+(prevISO?'':' disabled')+'>← Prev</button>'+
         '<button class="btn btn-g" id="dv-next"'+(nextISO?'':' disabled')+'>Next →</button>'+
         '<button class="btn btn-p" id="dv-new-sess">+ New Session</button>'+
@@ -1474,19 +1466,15 @@ function renderDayView(iso){
     '<div class="pb">'+sessCardsHtml+'</div></div>';
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   v.classList.add('active');
-  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='calendar'));
-  v.querySelector('#dv-back').onclick=()=>navTo('calendar');
+  document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='calendar'));
   v.querySelector('#dv-edit').onclick=()=>openDayForm(iso);
   v.querySelector('#dv-new-sess').onclick=()=>openSessionForm(null,iso);
   if(prevISO) v.querySelector('#dv-prev').onclick=()=>navTo('day/'+prevISO);
   if(nextISO) v.querySelector('#dv-next').onclick=()=>navTo('day/'+nextISO);
-  v.querySelectorAll('[data-sess]').forEach(b=>b.onclick=()=>navTo('session/'+b.dataset.sess));
   v.querySelectorAll('[data-edit-sess]').forEach(b=>b.onclick=()=>openSessionForm(b.dataset.editSess));
   v.addEventListener('click', e=>{
     const mc=e.target.closest('[data-minical-to]');
-    if(mc){ e.stopPropagation(); const el=v.querySelector('.mini-cal'); el.outerHTML=buildMiniCalendar(iso,mc.dataset.minicalTo); return; }
-    const gt=e.target.closest('[data-goto]');
-    if(gt){ navTo('day/'+gt.dataset.goto); }
+    if(mc){ e.stopPropagation(); const el=v.querySelector('.mini-cal'); el.outerHTML=buildMiniCalendar(iso,mc.dataset.minicalTo); }
   });
 }
 
@@ -1965,7 +1953,7 @@ function renderAssignments(){
       '<th>Links</th><th></th></tr></thead><tbody>'+
       rows.map(a=>
         '<tr>'+
-          '<td><button class="link-btn" data-view="'+a.id+'">'+esc(a.title||'(untitled)')+'</button></td>'+
+          '<td><a class="link-btn" href="#/assignment/'+esc(a.id)+'">'+esc(a.title||'(untitled)')+'</a></td>'+
           '<td>'+(a.category?esc(a.category):DASH)+'</td>'+
           '<td>'+(a.dueDate?esc(fmtDate(a.dueDate)):DASH)+'</td>'+
           '<td>'+(a.plannedDate?esc(fmtDate(a.plannedDate)):DASH)+'</td>'+
@@ -2005,7 +1993,6 @@ function renderAssignments(){
     else S.assignmentSort={key,dir:'asc'};
     renderAssignments();
   });
-  v.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navTo('assignment/'+b.dataset.view));
   v.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openAssignmentForm(b.dataset.edit));
 }
 function renderAssignmentView(id){
@@ -2016,7 +2003,7 @@ function renderAssignmentView(id){
   v.innerHTML=
     '<div class="page-title"><span>'+esc(a.title||'(untitled)')+'</span>'+
       '<span class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
-        '<button class="btn btn-g" id="av-back">← Back</button>'+
+        '<a class="btn btn-g" href="#/assignments">← Back</a>'+
         '<button class="btn btn-d" id="av-del">Delete</button>'+
         '<button class="btn btn-a" id="av-edit">Edit</button>'+
       '</span></div>'+
@@ -2032,8 +2019,7 @@ function renderAssignmentView(id){
     '</div></div></div>';
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   v.classList.add('active');
-  document.querySelectorAll('nav#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.nav==='assignments'));
-  v.querySelector('#av-back').onclick=()=>navTo('assignments');
+  document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='assignments'));
   v.querySelector('#av-edit').onclick=()=>openAssignmentForm(a.id);
   v.querySelector('#av-del').onclick=async()=>{
     if(await confirmDialog('Delete assignment','<p>Delete this assignment permanently? This cannot be undone.</p>','Delete')){
@@ -2404,7 +2390,7 @@ async function onboardImport(file){
 }
 
 /* ============================ WIRING ============================ */
-document.querySelectorAll('nav#tabs button').forEach(b=>b.onclick=()=>navTo(b.dataset.nav));
+document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.onclick=()=>navTo(b.dataset.nav));
 document.addEventListener('click',e=>{
   const dd=e.target.closest('[data-dd]');
   const act=e.target.closest('[data-act]');
