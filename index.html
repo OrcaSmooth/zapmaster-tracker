@@ -2030,14 +2030,16 @@ function renderAssignmentView(id){
 function openAssignmentForm(id){
   const a = id ? S.assignments.find(x=>x.id===id) : Object.assign({id:null},ASSIGNMENT_DEFAULTS);
   const cats=distinctCategories();
-  const catList='<datalist id="assignment-categories-form">'+cats.map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist>';
+  const isNewCat = !!a.category && !cats.includes(a.category);
+  const catOpts=cats.map(c=>'<option'+(!isNewCat&&a.category===c?' selected':'')+'>'+esc(c)+'</option>').join('')+
+    '<option value="__new__"'+(isNewCat?' selected':'')+'>+ Add new category…</option>';
   const ov=openModal(
     '<div class="modal-head">'+(id?'Edit Assignment':'New Assignment')+'<button class="x" data-c>&times;</button></div>'+
     '<div class="modal-body">'+
-      catList+
       '<div class="frow">'+
         '<div class="fg wide"><label for="af-title">Title *</label><input type="text" id="af-title" value="'+esc(a.title||'')+'"></div>'+
-        '<div class="fg wide"><label for="af-category">Category</label><input type="text" id="af-category" list="assignment-categories-form" value="'+esc(a.category||'')+'"></div>'+
+        '<div class="fg wide"><label for="af-category">Category</label><select id="af-category">'+catOpts+'</select>'+
+          '<input type="text" id="af-category-new" placeholder="New category name" style="margin-top:6px'+(isNewCat?'':';display:none')+'" value="'+esc(isNewCat?a.category:'')+'"></div>'+
       '</div>'+
       '<div class="frow">'+
         '<div class="fg"><label for="af-due">Due date</label><input type="date" id="af-due" value="'+esc(a.dueDate||'')+'"></div>'+
@@ -2054,12 +2056,17 @@ function openAssignmentForm(id){
     '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="af-save">Save Assignment</button></div>'
   );
   ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
+  const catSel=ov.querySelector('#af-category'), catNew=ov.querySelector('#af-category-new');
+  catSel.onchange=()=>{
+    catNew.style.display = catSel.value==='__new__' ? '' : 'none';
+    if(catSel.value==='__new__') catNew.focus();
+  };
   ov.querySelector('#af-save').onclick=()=>{
     const title=ov.querySelector('#af-title').value.trim();
     if(!title){ alert('Title is required.'); ov.querySelector('#af-title').focus(); return; }
     const rec={
       id: a.id||uid(), title,
-      category: ov.querySelector('#af-category').value.trim(),
+      category: (catSel.value==='__new__' ? catNew.value : catSel.value).trim(),
       dueDate: ov.querySelector('#af-due').value,
       plannedDate: ov.querySelector('#af-planned').value,
       submittedDate: ov.querySelector('#af-submitted-date').value,
