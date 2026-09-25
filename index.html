@@ -226,6 +226,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 .patient-tile.selected{border-color:var(--primary);background:var(--positive-bg)}
 .patient-tile-id{font-family:monospace;font-size:11px;color:var(--muted);letter-spacing:.3px}
 .patient-tile-count{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+.pid-note-block{width:100%;cursor:default;margin-top:2px}
+.pid-note-view{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+.pid-note-text{font-size:11px;color:var(--text);max-width:150px;overflow-wrap:break-word;text-align:center}
+.pid-note-text.empty{color:var(--muted);font-style:italic}
+.pid-note-input{width:100%;font-size:12px}
 @media print{
   #appbar,.no-print{display:none!important}
   #main{max-width:unset}
@@ -280,7 +285,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 
 <script>
 /* ============================ CONSTANTS ============================ */
-const K = { settings:'zap_settings', sessions:'zap_sessions', calendar:'zap_calendar', view:'zap_view', assignments:'zap_assignments', meta:'zap_meta' };
+const K = { settings:'zap_settings', sessions:'zap_sessions', calendar:'zap_calendar', view:'zap_view', assignments:'zap_assignments', meta:'zap_meta', patientNotes:'zap_patient_notes' };
 const NAV_VIEWS = ['reports','calendar','sessions','patients','assignments','settings','about']; // matches the tab order
 const DEFAULT_FORM_ID = '1FAIpQLSdAs88YbezDuxVPQptIynrqfVeMlQHNWoC8lcoFHmIXYTBrmg';
 const APP_VERSION = '1.0.0'; // bump by hand on notable releases
@@ -368,6 +373,7 @@ const S = {
   sessions: load(K.sessions, []),
   calendar: load(K.calendar, {}),
   assignments: load(K.assignments, []),
+  patientNotes: load(K.patientNotes, {}), // map of patientId -> identification note (free text, never contains real names by convention)
   view: 'sessions',
   calMonth: null,          // Date pointing at first of displayed month
   charts: {},
@@ -381,7 +387,7 @@ function emptyFilter(){ return { text:'', appointmentType:'', modality:'', machi
 function emptyAssignmentFilter(){ return { text:'', category:'', submitted:'', dueFrom:'', dueTo:'', plannedFrom:'', plannedTo:'' }; }
 normalizeSettings(S.settings);
 
-function persist(){ save(K.settings,S.settings); save(K.sessions,S.sessions); save(K.calendar,S.calendar); save(K.assignments,S.assignments); save(K.meta,{schemaVersion:DATA_SCHEMA_VERSION}); }
+function persist(){ save(K.settings,S.settings); save(K.sessions,S.sessions); save(K.calendar,S.calendar); save(K.assignments,S.assignments); save(K.patientNotes,S.patientNotes); save(K.meta,{schemaVersion:DATA_SCHEMA_VERSION}); }
 
 /* ============================ UTILS ============================ */
 function uid(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -450,9 +456,65 @@ function patientIdSVG(hexId, size){
   }
   return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="border-radius:4px;background:#eef1f1;display:block;flex-shrink:0">'+rects+'</svg>';
 }
+/* ---- Patient identification notes: free text keyed by patientId, used to tell patients
+   apart since the app never stores real names — only the derived hash. ---- */
+function getPatientNote(pid){ return (S.patientNotes[pid]||'').trim(); }
+function setPatientNote(pid, note){
+  note=(note||'').trim();
+  if(note) S.patientNotes[pid]=note; else delete S.patientNotes[pid];
+  persist();
+}
+function patientNoteBlockHTML(pid){
+  const note=getPatientNote(pid);
+  return '<div class="pid-note-block" data-note-pid="'+esc(pid)+'">'+
+    '<div class="pid-note-view">'+
+      '<span class="pid-note-text'+(note?'':' empty')+'">'+(note?esc(note):'No identification note')+'</span>'+
+      '<button class="btn btn-g btn-sm pid-note-edit-btn" type="button">✎ Note</button>'+
+    '</div>'+
+    '<div class="pid-note-edit" style="display:none">'+
+      '<textarea class="pid-note-input" rows="2" placeholder="e.g. tall, red hair, Tuesday regular">'+esc(note)+'</textarea>'+
+      '<div style="margin-top:6px;display:flex;gap:8px">'+
+        '<button class="btn btn-p btn-sm pid-note-save-btn" type="button">Save</button>'+
+        '<button class="btn btn-g btn-sm pid-note-cancel-btn" type="button">Cancel</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+// Wires a patientNoteBlockHTML(pid) block rendered inside `container`. Stops click propagation
+// so the block can be nested in a clickable tile/row (e.g. the patient picker) without
+// triggering the parent's selection handler. `onSaved(note)` fires after a successful save.
+function wirePatientNoteBlock(container, pid, onSaved){
+  const block=container.querySelector('[data-note-pid="'+CSS.escape(pid)+'"]');
+  if(!block) return;
+  const view=block.querySelector('.pid-note-view'), edit=block.querySelector('.pid-note-edit'),
+    input=block.querySelector('.pid-note-input');
+  const stop=e=>e.stopPropagation();
+  block.addEventListener('click',stop);
+  block.querySelector('.pid-note-edit-btn').onclick=e=>{ stop(e); view.style.display='none'; edit.style.display='block'; input.focus(); };
+  block.querySelector('.pid-note-cancel-btn').onclick=e=>{ stop(e); input.value=getPatientNote(pid); edit.style.display='none'; view.style.display='flex'; };
+  block.querySelector('.pid-note-save-btn').onclick=e=>{
+    stop(e);
+    setPatientNote(pid, input.value);
+    const note=getPatientNote(pid);
+    block.querySelector('.pid-note-text').textContent=note||'No identification note';
+    block.querySelector('.pid-note-text').classList.toggle('empty',!note);
+    edit.style.display='none'; view.style.display='flex';
+    if(onSaved) onSaved(note);
+  };
+}
 function saltFieldHTML(id, placeholder){
   return '<div class="pw-wrap"><input type="password" id="'+id+'" placeholder="'+esc(placeholder)+'">'+
     '<button class="pw-toggle" type="button" data-act="toggle-pw" data-pw-target="'+id+'">Show</button></div>';
+}
+function existingPatientPickerHTML(){
+  return '<div class="field-block" style="margin-top:12px">'+
+    '<span class="flabel" style="display:block;margin-bottom:8px">Or use an existing patient</span>'+
+    '<button class="btn btn-a btn-sm" id="sf-pid-browse" type="button">Select existing patient…</button>'+
+    '<div class="frow" style="margin-top:10px;margin-bottom:0">'+
+      '<div class="fg wide"><label for="sf-pid-direct">Existing patient ID</label><input type="text" id="sf-pid-direct" placeholder="e.g. a1b2c3d4" maxlength="8"></div>'+
+    '</div>'+
+    '<button class="btn btn-g btn-sm" id="sf-pid-use" type="button" style="margin-top:8px">Use this ID</button>'+
+  '</div>';
 }
 function patientSectionHTML(existingId){
   if(existingId){
@@ -464,6 +526,7 @@ function patientSectionHTML(existingId){
         '<button class="btn btn-g btn-sm" id="sf-pid-regen-btn" type="button">Regenerate…</button>'+
         '<button class="btn btn-d btn-sm" id="sf-pid-remove-btn" type="button">Remove</button>'+
       '</div>'+
+      '<div id="sf-pid-note-wrap" style="margin-top:10px">'+patientNoteBlockHTML(existingId)+'</div>'+
       '<div id="sf-pid-regen-ui" style="display:none;margin-top:12px">'+
         '<div class="frow" style="margin-bottom:8px">'+
           '<div class="fg wide"><label for="sf-pid-name">Patient name</label><input type="text" id="sf-pid-name" placeholder="Full name"></div>'+
@@ -472,6 +535,7 @@ function patientSectionHTML(existingId){
         '<button class="btn btn-g btn-sm" id="sf-pid-generate" type="button">Generate new ID</button>'+
         '<div id="sf-pid-result" style="display:none;margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap"></div>'+
       '</div>'+
+      existingPatientPickerHTML()+
     '</div>';
   }
   return '<div class="pid-section" id="sf-pid-section">'+
@@ -483,6 +547,7 @@ function patientSectionHTML(existingId){
     '</div>'+
     '<button class="btn btn-g btn-sm" id="sf-pid-generate" type="button">Generate ID</button>'+
     '<div id="sf-pid-result" style="display:none;margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap"></div>'+
+    existingPatientPickerHTML()+
   '</div>';
 }
 
@@ -678,7 +743,7 @@ function renderSessions(){
       '<div class="dropdown"><button class="btn btn-g" data-dd="export-menu-sessions">Export ▾</button>'+
         '<div class="dd-menu" id="export-menu-sessions"><button id="sessions-export-csv">CSV</button><button id="sessions-export-tsv">TSV</button></div></div>'+
       '<div class="dropdown"><button class="btn btn-g" data-dd="import-menu-sessions">Import ▾</button>'+
-        '<div class="dd-menu" id="import-menu-sessions"><button id="sessions-import-csv">CSV</button><button id="sessions-import-tsv">TSV</button></div></div>'+
+        '<div class="dd-menu" id="import-menu-sessions"><button id="sessions-import-csv">CSV</button><button id="sessions-import-tsv">TSV</button><button id="sessions-import-json">JSON</button></div></div>'+
       '<button class="btn btn-p" id="new-session">+ New Session</button></span></div>'+
     banner+
     '<div class="panel"><div class="pb">'+body+'</div></div>';
@@ -689,6 +754,7 @@ function renderSessions(){
   v.querySelector('#sessions-export-tsv').onclick=()=>exportSessionsTSV();
   v.querySelector('#sessions-import-csv').onclick=()=>startCsvImport('sessions','csv');
   v.querySelector('#sessions-import-tsv').onclick=()=>startCsvImport('sessions','tsv');
+  v.querySelector('#sessions-import-json').onclick=()=>importJSON(handleSessionImportFile);
   v.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{ openSessionForm(b.dataset.edit); });
   v.querySelectorAll('[data-soap]').forEach(b=>b.onclick=()=>openSoapForm(b.dataset.soap));
 }
@@ -697,11 +763,12 @@ function openPatientPickerModal(currentPid, onSelect){
   S.sessions.forEach(s=>{ if(s.patientId) patientMap[s.patientId]=(patientMap[s.patientId]||0)+1; });
   const patients=Object.entries(patientMap).sort((a,b)=>b[1]-a[1]); // most sessions first
   const tilesHTML=patients.map(([pid,count])=>
-    '<button class="patient-tile'+(pid===currentPid?' selected':'')+'" data-pid="'+esc(pid)+'" type="button">'+
+    '<div class="patient-tile'+(pid===currentPid?' selected':'')+'" data-pid="'+esc(pid)+'">'+
       patientIdSVG(pid,56)+
       '<div class="patient-tile-id">'+esc(pid)+'</div>'+
       '<div class="patient-tile-count">'+count+' session'+(count!==1?'s':'')+'</div>'+
-    '</button>'
+      patientNoteBlockHTML(pid)+
+    '</div>'
   ).join('');
   const ov=openModal(
     '<div class="modal-head">Select a Patient<button class="x" data-c>&times;</button></div>'+
@@ -712,8 +779,15 @@ function openPatientPickerModal(currentPid, onSelect){
     '</div>'+
     '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button></div>'
   );
-  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeModal);
-  ov.querySelectorAll('.patient-tile').forEach(b=>b.onclick=()=>{ closeModal(); onSelect(b.dataset.pid); });
+  // Opened nested on top of another already-open dialog (session form, filter form) — the
+  // shared closeModal() wipes all of #modal-root, which would destroy that parent dialog too.
+  // Remove only this picker's own overlay instead, leaving anything underneath intact.
+  const closeThis=()=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); };
+  ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=closeThis);
+  ov.querySelectorAll('.patient-tile').forEach(t=>{
+    wirePatientNoteBlock(t, t.dataset.pid);
+    t.onclick=()=>{ closeThis(); onSelect(t.dataset.pid); };
+  });
 }
 
 /* ============================ PATIENTS ============================ */
@@ -739,18 +813,21 @@ function renderPatients(){
     body='<div class="empty">No patient identifiers found in sessions yet.</div>';
   } else {
     body='<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
-      '<th>Patient</th><th>Sessions</th><th>Procedures</th><th>SOAP needed</th><th>Last session</th><th></th>'+
+      '<th>Patient</th><th>Note</th><th>Sessions</th><th>Procedures</th><th>SOAP needed</th><th>Last session</th><th></th>'+
       '</tr></thead><tbody>'+
-      patients.map(p=>
-        '<tr>'+
+      patients.map(p=>{
+        const note=getPatientNote(p.pid);
+        const notePreview=note.length>60?note.slice(0,60)+'…':note;
+        return '<tr>'+
           '<td><div class="pid-cell">'+patientIdSVG(p.pid,28)+'<span class="pid-badge">'+esc(p.pid)+'</span></div></td>'+
+          '<td>'+(note?'<span title="'+esc(note)+'">'+esc(notePreview)+'</span>':'<span style="color:var(--muted);font-style:italic">—</span>')+'</td>'+
           '<td>'+p.sessionCount+'</td>'+
           '<td>'+p.procedureCount+'</td>'+
           '<td>'+(p.soapNeeded?'<span class="soap-flag" title="SOAP not submitted">'+p.soapNeeded+'</span>':'0')+'</td>'+
           '<td>'+(p.lastDate?esc(fmtDate(p.lastDate)):DASH)+'</td>'+
           '<td><a class="btn btn-a btn-sm" href="#/patient/'+esc(p.pid)+'">View</a></td>'+
-        '</tr>'
-      ).join('')+
+        '</tr>';
+      }).join('')+
       '</tbody></table></div>';
   }
   v.innerHTML='<div class="page-title">Patients</div><div class="panel"><div class="pb">'+body+'</div></div>';
@@ -779,6 +856,7 @@ function renderPatientView(pid){
   v.innerHTML=
     '<div class="page-title"><span style="display:flex;align-items:center;gap:10px">'+patientIdSVG(pid,32)+'Patient — '+esc(pid)+'</span>'+
       '<span style="display:flex;gap:8px"><button class="btn btn-g" id="pv-rename">Rename Patient…</button><a class="btn btn-g" href="#/patients">← Back</a></span></div>'+
+    '<div class="panel"><div class="pb" id="pv-note-wrap">'+patientNoteBlockHTML(pid)+'</div></div>'+
     '<div class="panel"><div class="pb"><div class="sv-grid">'+
       svItem('Sessions',String(p.sessionCount))+
       svItem('Procedures',String(p.procedureCount))+
@@ -793,6 +871,7 @@ function renderPatientView(pid){
   v.classList.add('active');
   document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='patients'));
   v.querySelector('#pv-rename').onclick=()=>openRenamePatientModal(pid);
+  wirePatientNoteBlock(v.querySelector('#pv-note-wrap'), pid);
 }
 
 // Rename a patient identifier across every session that carries it. Requires the old
@@ -911,10 +990,8 @@ function openFilterForm(){
   ov.querySelector('#ff-apply').onclick=()=>{ S.sessionFilter=readFilterFields(); closeModal(); renderSessions(); };
   const ffBrowse=ov.querySelector('#ff-pid-browse');
   if(ffBrowse) ffBrowse.onclick=()=>{
-    const fields=readFilterFields(); // capture filter form state before opening picker
-    openPatientPickerModal(fields.patientId, pid=>{
-      S.sessionFilter=Object.assign(fields,{patientId:pid});
-      renderSessions();
+    openPatientPickerModal(ov.querySelector('#ff-pid').value.trim(), pid=>{
+      ov.querySelector('#ff-pid').value=pid; // fills the field; still requires "Apply filter" to take effect
     });
   };
   ov.querySelector('#ff-pid-gen').onclick=async()=>{
@@ -1026,6 +1103,18 @@ function openSessionForm(id, prefillDate){
   );
 
   // Patient section wiring
+  const sfPidNoteWrap=ov.querySelector('#sf-pid-note-wrap');
+  if(sfPidNoteWrap) wirePatientNoteBlock(sfPidNoteWrap, s.patientId);
+  const refreshPidResult=(pid, hint)=>{
+    const result=ov.querySelector('#sf-pid-result');
+    result.innerHTML=patientIdSVG(pid,40)+
+      '<div><span class="pid-badge" style="font-size:14px">'+esc(pid)+'</span>'+
+      (hint?'<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:3px">'+esc(hint)+'</div>':'')+
+      '<div style="margin-top:6px">'+patientNoteBlockHTML(pid)+'</div>'+
+      '</div>';
+    result.style.display='flex';
+    wirePatientNoteBlock(result, pid);
+  };
   const sfPidGenerate=ov.querySelector('#sf-pid-generate');
   if(sfPidGenerate) sfPidGenerate.onclick=async()=>{
     const name=ov.querySelector('#sf-pid-name').value.trim();
@@ -1034,9 +1123,7 @@ function openSessionForm(id, prefillDate){
     const id=await patientIdFromName(name,salt);
     if(!id) return;
     pendingPatientId=id; autoFilledPidValue=''; // manually set — disable auto-undo
-    const result=ov.querySelector('#sf-pid-result');
-    result.innerHTML=patientIdSVG(id,40)+'<span class="pid-badge" style="font-size:14px">'+esc(id)+'</span>';
-    result.style.display='flex';
+    refreshPidResult(id);
   };
   const sfPidRegenBtn=ov.querySelector('#sf-pid-regen-btn');
   if(sfPidRegenBtn) sfPidRegenBtn.onclick=()=>{ ov.querySelector('#sf-pid-regen-ui').style.display=''; };
@@ -1046,6 +1133,20 @@ function openSessionForm(id, prefillDate){
       pendingPatientId=''; autoFilledPidValue='';
       ov.querySelector('#sf-pid-current').innerHTML='<span style="color:var(--muted);font-style:italic">Patient ID removed — will be cleared on save.</span>';
     }
+  };
+  ov.querySelector('#sf-pid-browse').onclick=()=>{
+    openPatientPickerModal(pendingPatientId, pid=>{
+      pendingPatientId=pid; autoFilledPidValue='';
+      refreshPidResult(pid);
+    });
+  };
+  ov.querySelector('#sf-pid-use').onclick=async()=>{
+    const typed=ov.querySelector('#sf-pid-direct').value.trim();
+    if(!typed){ alert('Enter a patient ID.'); return; }
+    const known=S.sessions.some(x=>x.patientId===typed);
+    if(!known && !await confirmDialog('Unknown patient ID','<p>No existing patient in your sessions matches <b>'+esc(typed)+'</b>. Use it anyway?</p>','Use anyway')) return;
+    pendingPatientId=typed; autoFilledPidValue='';
+    refreshPidResult(typed);
   };
 
   // For new sessions: auto-fill patient ID from most recent Self work session with an ID
@@ -1057,11 +1158,7 @@ function openSessionForm(id, prefillDate){
           .sort((a,b)=>sessionOrder(b).localeCompare(sessionOrder(a)))[0];
         if(prev&&prev.patientId){
           pendingPatientId=prev.patientId; autoFilledPidValue=prev.patientId;
-          const result=ov.querySelector('#sf-pid-result');
-          result.innerHTML=patientIdSVG(prev.patientId,40)+
-            '<div><span class="pid-badge" style="font-size:14px">'+esc(prev.patientId)+'</span>'+
-            '<div class="hint" style="text-transform:none;letter-spacing:0;margin-top:3px">Auto-filled from a previous Self work session</div></div>';
-          result.style.display='flex';
+          refreshPidResult(prev.patientId, 'Auto-filled from a previous Self work session');
         }
       } else if(!isSelf && autoFilledPidValue && pendingPatientId===autoFilledPidValue){
         pendingPatientId=''; autoFilledPidValue='';
@@ -1136,6 +1233,8 @@ function renderSessionView(id){
           : '<button class="btn btn-p" id="sv-form">Submit to Google Form ↗</button>')+
         '<a class="btn btn-g" href="#/sessions">← Back</a>'+
         '<button class="btn btn-g" id="sv-print">Print</button>'+
+        '<button class="btn btn-g" id="sv-export">Export</button>'+
+        '<button class="btn btn-g" id="sv-import">Import</button>'+
         '<button class="btn btn-d" id="sv-del">Delete</button>'+
         '<button class="btn btn-a" id="sv-edit">Edit</button>'+
       '</span></div>'+
@@ -1171,6 +1270,8 @@ function renderSessionView(id){
   v.classList.add('active');
   document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='sessions'));
   v.querySelector('#sv-print').onclick=()=>window.print();
+  v.querySelector('#sv-export').onclick=()=>exportSessionJSON(s);
+  v.querySelector('#sv-import').onclick=()=>importJSON(handleSessionImportFile);
   v.querySelector('#sv-edit').onclick=()=>openSessionForm(s.id);
   const svForm=v.querySelector('#sv-form'); if(svForm) svForm.onclick=()=>openFormLink(s);
   v.querySelector('#sv-del').onclick=async()=>{
@@ -2089,7 +2190,78 @@ function download(name, text, type){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function fileStamp(){ return new Date().toISOString().slice(0,19).replace(/:/g,'-'); }
-function exportJSON(){ download('zapmaster-sessions-'+fileStamp()+'.json', JSON.stringify({schemaVersion:DATA_SCHEMA_VERSION,appVersion:APP_VERSION,settings:S.settings,sessions:S.sessions,calendar:S.calendar,assignments:S.assignments},null,2), 'application/json'); }
+function exportJSON(){ download('zapmaster-sessions-'+fileStamp()+'.json', JSON.stringify({schemaVersion:DATA_SCHEMA_VERSION,appVersion:APP_VERSION,settings:S.settings,sessions:S.sessions,calendar:S.calendar,assignments:S.assignments,patientNotes:S.patientNotes},null,2), 'application/json'); }
+
+/* ---- Single-session JSON export/import ---- */
+function sessionExportFilename(s){
+  return (s.date && s.startTime)
+    ? 'zapmaster-session-'+s.id+'-'+s.date+'-'+s.startTime.replace(/:/g,'-')+'.json'
+    : 'zapmaster-session-'+s.id+'.json';
+}
+function exportSessionJSON(s){ download(sessionExportFilename(s), JSON.stringify({schemaVersion:DATA_SCHEMA_VERSION,appVersion:APP_VERSION,session:s},null,2), 'application/json'); }
+function findSessionMatch(incoming){
+  let m=incoming.id?S.sessions.find(x=>x.id===incoming.id):null;
+  if(m) return {session:m,matchedBy:'id'};
+  m=(incoming.date && incoming.startTime)?S.sessions.find(x=>x.date===incoming.date && x.startTime===incoming.startTime):null;
+  if(m) return {session:m,matchedBy:'datetime'};
+  return {session:null,matchedBy:null};
+}
+function diffSession(existing, incoming, fields){
+  if(!existing) return {type:'add'};
+  const changed=fields.filter(f=>JSON.stringify(existing[f])!==JSON.stringify(incoming[f]));
+  return {type:'update',fields:changed};
+}
+function openSessionImportPreviewModal(data, match, diffResult){
+  return new Promise(res=>{
+    const versionWarning=(data.schemaVersion && data.schemaVersion>DATA_SCHEMA_VERSION)
+      ?'<p class="hint" style="text-transform:none;letter-spacing:0;color:var(--danger,#b5651d)">This session was exported from a newer version of Zapmaster Tracker (data schema v'+esc(data.schemaVersion)+', this app supports v'+DATA_SCHEMA_VERSION+'). Some fields may not be recognized.</p>'
+      :'';
+    let body;
+    if(diffResult.type==='add'){
+      body='<p>This will create a <b>new session</b> on <b>'+(data.session.date?esc(fmtDate(data.session.date)):'(no date)')+'</b>.</p>';
+    } else {
+      body='<p>This will <b>update</b> the existing session on <b>'+esc(fmtDate(match.session.date))+'</b>.</p>'+
+        (match.matchedBy==='datetime'?'<p class="hint" style="text-transform:none;letter-spacing:0">Matched by date/time (no matching id found).</p>':'')+
+        (diffResult.fields.length
+          ? '<p>Fields that will change: '+esc(diffResult.fields.join(', '))+'</p>'
+          : '<p>No field differences detected — file matches the existing session.</p>');
+    }
+    const ov=openModal(
+      '<div class="modal-head">Import session<button class="x" data-c>&times;</button></div>'+
+      '<div class="modal-body">'+versionWarning+body+'</div>'+
+      '<div class="modal-foot"><button class="btn btn-g" data-c>Cancel</button><button class="btn btn-p" id="si-apply">Import</button></div>'
+    );
+    ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{ closeModal(); res(false); });
+    ov.querySelector('#si-apply').onclick=()=>{ closeModal(); res(true); };
+  });
+}
+function applySessionImport(data, match){
+  if(match.session){
+    const rec=Object.assign({},SESSION_DEFAULTS,data.session,{id:match.session.id});
+    const idx=S.sessions.findIndex(x=>x.id===match.session.id);
+    S.sessions[idx]=rec;
+    persist();
+    return rec;
+  }
+  const id=(data.session.id && !S.sessions.some(x=>x.id===data.session.id))?data.session.id:uid();
+  const rec=Object.assign({},SESSION_DEFAULTS,data.session,{id});
+  S.sessions.push(rec);
+  persist();
+  return rec;
+}
+async function handleSessionImportFile(file){
+  try{
+    const data=await readImport(file);
+    if(!data.session || !data.session.date) throw new Error('No session found in that file (expected a session object with at least a date).');
+    const match=findSessionMatch(data.session);
+    const diff=diffSession(match.session, data.session, Object.keys(SESSION_DEFAULTS));
+    if(!await openSessionImportPreviewModal(data, match, diff)) return;
+    const rec=applySessionImport(data, match);
+    if(S.view==='sessions') renderSessions();
+    else if(S.view==='session') renderSessionView(rec.id);
+    else navTo('sessions');
+  }catch(e){ alert('Could not import file: '+e.message); }
+}
 
 /* ---- CSV/TSV parsing & serialization ---- */
 function parseCSV(text){
@@ -2324,14 +2496,15 @@ function diffImportData(data){
   normalizeSettings(mergedSettings);
   const settingsChangedKeys=data.settings?Object.keys(mergedSettings).filter(k=>JSON.stringify(S.settings[k])!==JSON.stringify(mergedSettings[k])):[];
   const calendarChanged=!!data.calendar && JSON.stringify(S.calendar||{})!==JSON.stringify(data.calendar);
-  return {sessions,assignments,settingsChangedKeys,calendarChanged};
+  const patientNotesChanged=!!data.patientNotes && JSON.stringify(S.patientNotes||{})!==JSON.stringify(data.patientNotes);
+  return {sessions,assignments,settingsChangedKeys,calendarChanged,patientNotesChanged};
 }
 function openImportPreviewModal(data, diff){
   return new Promise(res=>{
-    const {sessions,assignments,settingsChangedKeys,calendarChanged}=diff;
+    const {sessions,assignments,settingsChangedKeys,calendarChanged,patientNotesChanged}=diff;
     const totalChanges=sessions.added.length+sessions.changed.length+sessions.removed.length
       +assignments.added.length+assignments.changed.length+assignments.removed.length
-      +settingsChangedKeys.length+(calendarChanged?1:0);
+      +settingsChangedKeys.length+(calendarChanged?1:0)+(patientNotesChanged?1:0);
     const versionWarning=(data.schemaVersion && data.schemaVersion>DATA_SCHEMA_VERSION)
       ?'<p class="hint" style="text-transform:none;letter-spacing:0;color:var(--danger,#b5651d)">This backup was made with a newer version of Zapmaster Tracker (data schema v'+esc(data.schemaVersion)+', this app supports v'+DATA_SCHEMA_VERSION+'). Some fields may not be recognized.</p>'
       :'';
@@ -2356,7 +2529,8 @@ function openImportPreviewModal(data, diff){
       listSection('Assignments to update', assignments.changed, c=>IMPORT_CONFIGS.assignments.describe(c.incoming)+' — '+c.fields.join(', ')+' changed')+
       listSection('Assignments to remove', assignments.removed, r=>IMPORT_CONFIGS.assignments.describe(r))+
       (settingsChangedKeys.length?'<div class="hint" style="text-transform:none;letter-spacing:0;margin-bottom:6px">Settings: '+settingsChangedKeys.length+' field'+(settingsChangedKeys.length>1?'s':'')+' changed ('+settingsChangedKeys.join(', ')+')</div>':'')+
-      (calendarChanged?'<div class="hint" style="text-transform:none;letter-spacing:0">Calendar data will change.</div>':'');
+      (calendarChanged?'<div class="hint" style="text-transform:none;letter-spacing:0">Calendar data will change.</div>':'')+
+      (patientNotesChanged?'<div class="hint" style="text-transform:none;letter-spacing:0">Patient identification notes will change.</div>':'');
     const ov=openModal(
       '<div class="modal-head">Review import<button class="x" data-c>&times;</button></div>'+
       '<div class="modal-body" style="max-height:60vh;overflow:auto">'+body+'</div>'+
@@ -2375,6 +2549,7 @@ function applyImport(data){
   if(Array.isArray(data.sessions)) S.sessions=data.sessions;
   if(data.calendar&&typeof data.calendar==='object') S.calendar=data.calendar;
   if(Array.isArray(data.assignments)) S.assignments=data.assignments;
+  if(data.patientNotes&&typeof data.patientNotes==='object') S.patientNotes=data.patientNotes;
   normalizeSettings(S.settings);
   persist(); refreshChrome(); S.calMonth=null;
 }
