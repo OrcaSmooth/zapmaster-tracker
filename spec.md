@@ -148,6 +148,10 @@ functions directly since the hash doesn't change.
   groups for machines/megahertz/filaments/body areas). Each row's View page shows all fields (including patient
   identicon + ID when set) and a **Submit to Google Form**
   button; the **Date of Service** field is a link that navigates to the Day detail page for that date.
+  When a session has a patient ID, the ID is a link to the Patient detail page, and an **Other
+  sessions for this patient** panel (shown when the patient has 2+ sessions; hidden in print) offers
+  ← Previous / Next → links (chronological), a Patient page link, and a newest-first list of all
+  that patient's sessions linking to their session pages.
 - **Patients** — summary table of every distinct `patientId` seen across sessions (rows are
   clickable). Columns:
   Patient (identicon + 8-char hex ID), Sessions (count), Procedures (sum across those sessions),

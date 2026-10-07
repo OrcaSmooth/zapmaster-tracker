@@ -1219,6 +1219,31 @@ function openSessionForm(id, prefillDate){
 
 /* ============================ SESSION VIEW ============================ */
 function svItem(k,v,full){ return '<div class="sv-item'+(full?' full':'')+'"><div class="k">'+esc(k)+'</div><div class="v">'+(v?esc(v):DASH)+'</div></div>'; }
+// "Other sessions" panel on the session page: prev/next links plus a compact list of every
+// session sharing this patientId (newest first), each linking to its own session page.
+function patientSessionsPanelHTML(s){
+  if(!s.patientId) return '';
+  const all=S.sessions.filter(x=>x.patientId===s.patientId).sort((a,b)=>sessionOrder(a).localeCompare(sessionOrder(b)));
+  if(all.length<2) return '';
+  const i=all.findIndex(x=>x.id===s.id);
+  const nav=(x,label)=>x?'<a class="btn btn-g btn-sm" href="#/session/'+esc(x.id)+'">'+label+'</a>':'<span></span>';
+  const items=all.slice().reverse().map(x=>{
+    const cur=x.id===s.id;
+    return '<tr'+(cur?' style="font-weight:700"':'')+'>'+
+      '<td>'+(x.soapSubmitted?'<span class="tick">✓</span>':(futureSession(x)?DASH:'<span class="soap-flag" title="SOAP not submitted">!</span>'))+'</td>'+
+      '<td>'+(cur?esc(fmtDate(x.date))+' (this session)':'<a class="link-btn" href="#/session/'+esc(x.id)+'">'+esc(fmtDate(x.date))+'</a>')+'</td>'+
+      '<td>'+apptPill(x.appointmentType)+'</td>'+
+      '<td>'+sessionProcedures(x)+'</td></tr>';
+  }).join('');
+  return '<div class="panel no-print"><div class="ph">Other sessions for this patient ('+all.length+')</div><div class="pb">'+
+    '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:10px">'+
+      nav(all[i-1],'← Previous')+
+      '<a class="btn btn-g btn-sm" href="#/patient/'+esc(s.patientId)+'">Patient page</a>'+
+      nav(all[i+1],'Next →')+
+    '</div>'+
+    '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>SOAP</th><th>Date</th><th>Type</th><th>Proc.</th></tr></thead><tbody>'+items+'</tbody></table></div>'+
+  '</div></div>';
+}
 function renderSessionView(id){
   const s=S.sessions.find(x=>x.id===id); if(!s){ navTo('sessions'); return; }
   S.view='session'; // pseudo-view (not a nav tab, so K.view isn't persisted) — lets edit-save re-render this page
@@ -1240,7 +1265,7 @@ function renderSessionView(id){
       '</span></div>'+
     '<div class="panel"><div class="pb"><div class="sv-grid">'+
       '<div class="sv-item"><div class="k">Date of Service</div><div class="v"><a class="link-btn" href="#/day/'+esc(s.date)+'">'+esc(fmtDate(s.date))+'</a></div></div>'+
-      (s.patientId?'<div class="sv-item"><div class="k">Patient ID</div><div class="v"><div style="display:flex;align-items:center;gap:8px">'+patientIdSVG(s.patientId,36)+'<span class="pid-badge" style="font-size:14px">'+esc(s.patientId)+'</span></div></div></div>':'')+
+      (s.patientId?'<div class="sv-item"><div class="k">Patient ID</div><div class="v"><div style="display:flex;align-items:center;gap:8px">'+patientIdSVG(s.patientId,36)+'<a class="pid-badge" style="font-size:14px" href="#/patient/'+esc(s.patientId)+'" title="View all sessions for this patient">'+esc(s.patientId)+'</a></div></div></div>':'')+
       svItem('Appointment time (Pacific)',fmtTimeRange(s))+
       svItem('Type of Appointment',s.appointmentType)+
       svItem('Technician',s.technician)+
@@ -1265,7 +1290,7 @@ function renderSessionView(id){
       svItem('Assessment',s.assessment,true)+
       svItem('Plan',s.plan,true)+
       svItem('My Notes (private)',s.myNotes,true)+
-    '</div></div></div>';
+    '</div></div></div>'+patientSessionsPanelHTML(s);
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   v.classList.add('active');
   document.querySelectorAll('nav#tabs button,nav#tabs a').forEach(b=>b.classList.toggle('active',b.dataset.nav==='sessions'));
